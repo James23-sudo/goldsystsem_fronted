@@ -82,14 +82,15 @@
           <div class="form-row">
             <div class="form-group">
               <label>买卖方向 <span class="required">*</span></label>
-              <select v-model="dataForm.direction" @change="validateDataForm">
+              <select v-model="dataForm.direction" @change="handleDirectionChange">
                 <option value="">请选择</option>
-                <option value="买入">买入</option>
-                <option value="卖出">卖出</option>
+                <option value="buy">buy</option>
+                <option value="sell">sell</option>
+                <option value="balance">balance</option>
               </select>
               <span v-if="dataErrors.direction" class="error-msg">{{ dataErrors.direction }}</span>
             </div>
-            <div class="form-group">
+            <div class="form-group" v-if="isTradeDirection">
               <label>成交量(盎司) <span class="required">*</span></label>
               <input 
                 v-model="dataForm.volume" 
@@ -100,10 +101,7 @@
               />
               <span v-if="dataErrors.volume" class="error-msg">{{ dataErrors.volume }}</span>
             </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" v-if="!isTradeDirection">
               <label>出入金 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.entryExit" 
@@ -114,6 +112,9 @@
               />
               <span v-if="dataErrors.entryExit" class="error-msg">{{ dataErrors.entryExit }}</span>
             </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>隔夜费比例(%) <span class="required">*</span></label>
               <input 
@@ -125,9 +126,75 @@
               />
               <span v-if="dataErrors.overnightProportion" class="error-msg">{{ dataErrors.overnightProportion }}</span>
             </div>
+            <div class="form-group">
+              <label>开仓时间 <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.openingTime" 
+                type="datetime-local" 
+                step="1"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.openingTime" class="error-msg">{{ dataErrors.openingTime }}</span>
+            </div>
           </div>
 
-          <div class="form-row">
+          <div class="form-row" v-if="isTradeDirection">
+            <div class="form-group">
+              <label>平仓时间</label>
+              <input 
+                v-model="dataForm.closingTime" 
+                type="datetime-local" 
+                step="1"
+              />
+            </div>
+            <div class="form-group">
+              <label>交易品种</label>
+              <input 
+                v-model="dataForm.varieties" 
+                type="text" 
+                placeholder="默认: lbma"
+                maxlength="64"
+              />
+            </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
+            <div class="form-group">
+              <label>开仓价格</label>
+              <input 
+                v-model="dataForm.openingPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入开仓价格"
+              />
+            </div>
+            <div class="form-group">
+              <label>平仓价格</label>
+              <input 
+                v-model="dataForm.closingPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入平仓价格"
+              />
+            </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
+            <div class="form-group">
+              <label>收盘价</label>
+              <input 
+                v-model="dataForm.overPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入收盘价"
+              />
+            </div>
+            <div class="form-group">
+              <!-- Empty space for layout -->
+            </div>
+          </div>
+
+          <div class="form-row" v-if="!isTradeDirection">
             <div class="form-group">
               <label>开仓时间 <span class="required">*</span></label>
               <input 
@@ -139,54 +206,7 @@
               <span v-if="dataErrors.openingTime" class="error-msg">{{ dataErrors.openingTime }}</span>
             </div>
             <div class="form-group">
-              <label>平仓时间</label>
-              <input 
-                v-model="dataForm.closingTime" 
-                type="datetime-local" 
-                step="1"
-              />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>交易品种</label>
-              <input 
-                v-model="dataForm.varieties" 
-                type="text" 
-                placeholder="默认: lbma"
-                maxlength="64"
-              />
-            </div>
-            <div class="form-group">
-              <label>开仓价格</label>
-              <input 
-                v-model="dataForm.openingPrice" 
-                type="number" 
-                step="0.01"
-                placeholder="请输入开仓价格"
-              />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>平仓价格</label>
-              <input 
-                v-model="dataForm.closingPrice" 
-                type="number" 
-                step="0.01"
-                placeholder="请输入平仓价格"
-              />
-            </div>
-            <div class="form-group">
-              <label>收盘价</label>
-              <input 
-                v-model="dataForm.overPrice" 
-                type="number" 
-                step="0.01"
-                placeholder="请输入收盘价"
-              />
+              <!-- Empty space for layout -->
             </div>
           </div>
         </div>
@@ -247,7 +267,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { addUser, getAllUser } from '@/api/user'
 import { getTraderList, addTraderData, updateTraderData } from '@/api/trader'
 import DataTable from './DataTable.vue'
@@ -262,11 +282,11 @@ export default {
       { prop: 'id', label: '账号', width: '80px' },
       { prop: 'orderId', label: '订单号', width: '80px' },
       { prop: 'openingTime', label: '开仓时间', width: '120px' },
-      { prop: 'closingTime', label: '平仓时间', width: '120px' },
       { prop: 'direction', label: '买卖方向', width: '60px' },
       { prop: 'volume', label: '成交量(盎司)', width: '60px' },
       { prop: 'varieties', label: '交易品种', width: '60px' },
       { prop: 'openingPrice', label: '开仓价格', width: '60px' },
+      { prop: 'closingTime', label: '平仓时间', width: '120px' },
       { prop: 'closingPrice', label: '平仓价格', width: '60px' },
       { prop: 'overnightPrice', label: '隔夜费', width: '60px' },
       { prop: 'inoutPrice', label: '盈亏', width: '100px' },
@@ -559,6 +579,36 @@ export default {
       openingTime: ''
     })
 
+    // Check if direction is buy or sell (trade direction)
+    const isTradeDirection = computed(() => {
+      return dataForm.direction === 'buy' || dataForm.direction === 'sell'
+    })
+
+    // Handle direction change
+    const handleDirectionChange = () => {
+      // Clear validation errors
+      dataErrors.volume = ''
+      dataErrors.entryExit = ''
+      dataErrors.overnightProportion = ''
+      
+      // Reset fields based on direction
+      if (isTradeDirection.value) {
+        // For buy/sell, clear entryExit
+        dataForm.entryExit = ''
+      } else {
+        // For balance, clear trade-specific fields
+        dataForm.volume = ''
+        dataForm.overnightProportion = ''
+        dataForm.closingTime = ''
+        dataForm.varieties = 'lbma'
+        dataForm.openingPrice = ''
+        dataForm.closingPrice = ''
+        dataForm.overPrice = ''
+      }
+      
+      validateDataForm()
+    }
+
     const fetchUserList = async () => {
       try {
         const response = await getAllUser()
@@ -638,25 +688,30 @@ export default {
         dataErrors.direction = ''
       }
 
-      if (!dataForm.volume || parseFloat(dataForm.volume) <= 0) {
-        dataErrors.volume = '成交量必须大于0'
-        isValid = false
-      } else {
-        dataErrors.volume = ''
-      }
+      // Validate based on direction type
+      if (isTradeDirection.value) {
+        // For buy/sell: validate volume and overnightProportion
+        if (!dataForm.volume || parseFloat(dataForm.volume) <= 0) {
+          dataErrors.volume = '成交量必须大于0'
+          isValid = false
+        } else {
+          dataErrors.volume = ''
+        }
 
-      if (dataForm.entryExit === '') {
-        dataErrors.entryExit = '出入金不能为空'
-        isValid = false
+        if (!dataForm.overnightProportion || parseFloat(dataForm.overnightProportion) < 0) {
+          dataErrors.overnightProportion = '隔夜费比例不能为空且不能为负'
+          isValid = false
+        } else {
+          dataErrors.overnightProportion = ''
+        }
       } else {
-        dataErrors.entryExit = ''
-      }
-
-      if (!dataForm.overnightProportion || parseFloat(dataForm.overnightProportion) < 0) {
-        dataErrors.overnightProportion = '隔夜费比例不能为空且不能为负'
-        isValid = false
-      } else {
-        dataErrors.overnightProportion = ''
+        // For balance: validate entryExit
+        if (dataForm.entryExit === '') {
+          dataErrors.entryExit = '出入金不能为空'
+          isValid = false
+        } else {
+          dataErrors.entryExit = ''
+        }
       }
 
       if (!dataForm.openingTime) {
@@ -687,19 +742,35 @@ export default {
           id: dataForm.userId,
           orderId: dataForm.orderId,
           openingTime: formatDateTime(dataForm.openingTime),
-          closingTime: dataForm.closingTime ? formatDateTime(dataForm.closingTime) : null,
           direction: dataForm.direction,
-          volume: parseFloat(dataForm.volume),
-          varieties: dataForm.varieties || 'lbma',
-          openingPrice: dataForm.openingPrice ? parseFloat(dataForm.openingPrice) : null,
-          closingPrice: dataForm.closingPrice ? parseFloat(dataForm.closingPrice) : null,
-          overnightPrice: null,
-          inoutPrice: null,
-          isOk: '0',
-          status: '1',
-          overPrice: dataForm.overPrice ? parseFloat(dataForm.overPrice) : null,
-          entryExit: parseFloat(dataForm.entryExit),
-          overnightProportion: parseFloat(dataForm.overnightProportion)
+          status: '1'
+        }
+
+        // Add fields based on direction type
+        if (isTradeDirection.value) {
+          // For buy/sell direction
+          requestData.closingTime = dataForm.closingTime ? formatDateTime(dataForm.closingTime) : null
+          requestData.volume = parseFloat(dataForm.volume)
+          requestData.varieties = dataForm.varieties || 'lbma'
+          requestData.openingPrice = dataForm.openingPrice ? parseFloat(dataForm.openingPrice) : null
+          requestData.closingPrice = dataForm.closingPrice ? parseFloat(dataForm.closingPrice) : null
+          requestData.overnightPrice = null
+          requestData.inoutPrice = null
+          requestData.overPrice = dataForm.overPrice ? parseFloat(dataForm.overPrice) : null
+          requestData.entryExit = null
+          requestData.overnightProportion = parseFloat(dataForm.overnightProportion)
+        } else {
+          // For balance direction
+          requestData.closingTime = null
+          requestData.volume = null
+          requestData.varieties = null
+          requestData.openingPrice = null
+          requestData.closingPrice = null
+          requestData.overnightPrice = null
+          requestData.inoutPrice = null
+          requestData.overPrice = null
+          requestData.entryExit = parseFloat(dataForm.entryExit)
+          requestData.overnightProportion = null
         }
 
         let response
@@ -763,6 +834,8 @@ export default {
       userList,
       dataForm,
       dataErrors,
+      isTradeDirection,
+      handleDirectionChange,
       validateDataForm,
       submitAddData
     }
