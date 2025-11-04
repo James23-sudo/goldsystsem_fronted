@@ -2,79 +2,147 @@
   <div>
     <div class="content-header">
       <h2>历史数据看板</h2>
-      <button class="export-btn">Export Data</button>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="stat-card" v-for="stat in stats" :key="stat.title">
-        <div class="stat-icon">{{ stat.icon }}</div>
-        <div class="stat-info">
-          <h3>{{ stat.value }}</h3>
-          <p>{{ stat.title }}</p>
+    <!-- Main Content Grid -->
+    <div class="main-grid">
+      <!-- User List Section -->
+      <div class="table-section">
+        <h3 class="section-title">用户信息列表</h3>
+        <div class="user-list-container">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th style="width: 50%;">用户账号</th>
+                <th style="width: 50%;">备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in userList" :key="user.id">
+                <td>{{ user.id }}</td>
+                <td>{{ user.remark || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
 
-    <!-- Historical Data Table -->
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Record ID</th>
-            <th>Date</th>
-            <th>Activity</th>
-            <th>User</th>
-            <th>Amount</th>
-            <th>Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in historyData" :key="item.id">
-            <td>{{ item.id }}</td>
-            <td>{{ item.date }}</td>
-            <td>{{ item.activity }}</td>
-            <td>{{ item.user }}</td>
-            <td>{{ item.amount }}</td>
-            <td>
-              <span :class="['type-badge', item.type]">
-                {{ item.type }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- User Data Query Section -->
+      <div class="table-section">
+        <div class="query-header">
+          <h3 class="section-title">用户历史数据</h3>
+          <div class="query-controls">
+            <label>选择用户：</label>
+            <select v-model="selectedUserId" @change="handleUserChange" class="user-select">
+              <option value="">请选择用户</option>
+              <option v-for="user in userList" :key="user.id" :value="user.id">
+                {{ user.id }} - {{ user.remark || '无备注' }}
+              </option>
+            </select>
+            <button class="query-btn" @click="queryUserData" :disabled="!selectedUserId">
+              查询
+            </button>
+          </div>
+        </div>
+
+        <!-- User Data Table (will be populated based on API you provide) -->
+        <div v-if="selectedUserId && userData.length > 0" class="data-result">
+          <p class="result-info">查询到 {{ userData.length }} 条数据</p>
+          <!-- Placeholder for user data table -->
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>订单号</th>
+                  <th>开仓时间</th>
+                  <th>平仓时间</th>
+                  <th>买卖方向</th>
+                  <th>成交量</th>
+                  <th>盈亏</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in userData" :key="item.orderId">
+                  <td>{{ item.orderId }}</td>
+                  <td>{{ item.openingTime }}</td>
+                  <td>{{ item.closingTime || '-' }}</td>
+                  <td>{{ item.direction }}</td>
+                  <td>{{ item.volume }}</td>
+                  <td :class="item.inoutPrice >= 0 ? 'profit' : 'loss'">
+                    {{ item.inoutPrice }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div v-else-if="selectedUserId && queriedOnce" class="empty-state">
+          <p>暂无数据</p>
+        </div>
+        <div v-else class="placeholder-state">
+          <p>请选择用户并点击查询</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getAllUser } from '@/api/user'
 
 export default {
   name: 'HistoryDashboard',
   setup() {
-    const stats = ref([
-      { title: 'Total Records', value: '5,234', icon: '📝' },
-      { title: 'This Month', value: '892', icon: '📅' },
-      { title: 'Last Month', value: '1,045', icon: '📊' },
-      { title: 'Average Daily', value: '175', icon: '📈' }
-    ])
+    const userList = ref([])
+    const selectedUserId = ref('')
+    const userData = ref([])
+    const queriedOnce = ref(false)
 
-    const historyData = ref([
-      { id: 'H001', date: '2024-05-15', activity: 'User Registration', user: 'John Doe', amount: '$0', type: 'signup' },
-      { id: 'H002', date: '2024-05-14', activity: 'Purchase', user: 'Jane Smith', amount: '$299', type: 'purchase' },
-      { id: 'H003', date: '2024-05-14', activity: 'Login', user: 'Bob Johnson', amount: '$0', type: 'login' },
-      { id: 'H004', date: '2024-05-13', activity: 'Purchase', user: 'Alice Brown', amount: '$149', type: 'purchase' },
-      { id: 'H005', date: '2024-05-13', activity: 'Refund', user: 'Charlie Wilson', amount: '-$89', type: 'refund' },
-      { id: 'H006', date: '2024-05-12', activity: 'User Registration', user: 'David Lee', amount: '$0', type: 'signup' },
-      { id: 'H007', date: '2024-05-12', activity: 'Purchase', user: 'Emma Davis', amount: '$499', type: 'purchase' },
-      { id: 'H008', date: '2024-05-11', activity: 'Login', user: 'Frank Miller', amount: '$0', type: 'login' }
-    ])
+    // Fetch all users
+    const fetchUserList = async () => {
+      try {
+        const response = await getAllUser()
+        if (response.data.code === 200) {
+          userList.value = response.data.data || []
+        }
+      } catch (error) {
+        console.error('获取用户列表失败:', error)
+      }
+    }
+
+    // Handle user selection change
+    const handleUserChange = () => {
+      userData.value = []
+      queriedOnce.value = false
+    }
+
+    // Query user data (API to be provided)
+    const queryUserData = async () => {
+      if (!selectedUserId.value) return
+      
+      queriedOnce.value = true
+      
+      // TODO: Call API to fetch user data
+      // const response = await getUserHistory({ userId: selectedUserId.value })
+      // userData.value = response.data.data || []
+      
+      console.log('Querying data for user:', selectedUserId.value)
+      // Temporary mock data
+      userData.value = []
+    }
+
+    onMounted(() => {
+      fetchUserList()
+    })
 
     return {
-      stats,
-      historyData
+      userList,
+      selectedUserId,
+      userData,
+      queriedOnce,
+      handleUserChange,
+      queryUserData
     }
   }
 }
@@ -93,9 +161,102 @@ export default {
   color: #2c3e50;
 }
 
-.export-btn {
-  padding: 10px 25px;
-  background: #9b59b6;
+.main-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.table-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.section-title {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
+  padding-left: 10px;
+  border-left: 4px solid #3498db;
+}
+
+.user-list-container {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-table th {
+  text-align: left;
+  padding: 15px;
+  border-bottom: 2px solid #ecf0f1;
+  color: #2c3e50;
+  font-weight: 600;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.user-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ecf0f1;
+  color: #34495e;
+}
+
+.user-table tr:hover {
+  background: #f8f9fa;
+}
+
+.query-header {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.query-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.query-controls label {
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.user-select {
+  padding: 8px 12px;
+  border: 1px solid #dfe6e9;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+  background: white;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.user-select:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.query-btn {
+  padding: 8px 20px;
+  background: #3498db;
   color: white;
   border: none;
   border-radius: 5px;
@@ -104,54 +265,30 @@ export default {
   transition: background 0.3s;
 }
 
-.export-btn:hover {
-  background: #8e44ad;
+.query-btn:hover:not(:disabled) {
+  background: #2980b9;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+.query-btn:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
 }
 
-.stat-card {
-  background: white;
-  padding: 25px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon {
-  font-size: 40px;
-}
-
-.stat-info h3 {
-  margin: 0 0 5px 0;
-  font-size: 28px;
-  color: #2c3e50;
-}
-
-.stat-info p {
-  margin: 0;
-  color: #7f8c8d;
-  font-size: 14px;
-}
-
-.table-container {
+.data-result {
   background: white;
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.result-info {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
 }
 
 .data-table {
@@ -165,42 +302,55 @@ export default {
   border-bottom: 2px solid #ecf0f1;
   color: #2c3e50;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .data-table td {
-  padding: 15px;
+  padding: 12px 15px;
   border-bottom: 1px solid #ecf0f1;
   color: #34495e;
+  white-space: nowrap;
 }
 
 .data-table tr:hover {
   background: #f8f9fa;
 }
 
-.type-badge {
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+.profit {
+  color: #27ae60;
+  font-weight: 600;
 }
 
-.type-badge.signup {
-  background: #d1ecf1;
-  color: #0c5460;
+.loss {
+  color: #e74c3c;
+  font-weight: 600;
 }
 
-.type-badge.purchase {
-  background: #d4edda;
-  color: #155724;
+.empty-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.type-badge.login {
-  background: #e2e3e5;
-  color: #383d41;
+.empty-state p {
+  margin: 0;
+  color: #95a5a6;
+  font-size: 16px;
 }
 
-.type-badge.refund {
-  background: #f8d7da;
-  color: #721c24;
+.placeholder-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.placeholder-state p {
+  margin: 0;
+  color: #bdc3c7;
+  font-size: 16px;
 }
 </style>

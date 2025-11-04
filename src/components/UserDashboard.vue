@@ -47,55 +47,341 @@
       </div>
     </div>
 
-    <!-- Data Table -->
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Created Date</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in tableData" :key="item.id">
-            <td>{{ item.id }}</td>
-            <td>{{ item.name }}</td>
-            <td>{{ item.email }}</td>
-            <td>
-              <span :class="['status-badge', item.status]">
-                {{ item.status }}
-              </span>
-            </td>
-            <td>{{ item.date }}</td>
-            <td>
-              <button class="action-btn edit">Edit</button>
-              <button class="action-btn delete">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Add Customer Data Modal -->
+    <div v-if="isAddDataModalVisible" class="modal-overlay" @click="closeDataModal">
+      <div class="modal-content modal-large" @click.stop>
+        <div class="modal-header">
+          <h3>新增客户数据</h3>
+          <button class="close-btn" @click="closeDataModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>选择用户 <span class="required">*</span></label>
+              <select v-model="dataForm.userId" @change="validateDataForm">
+                <option value="">请选择用户</option>
+                <option v-for="user in userList" :key="user.id" :value="user.id">
+                  {{ user.id }} - {{ user.remark || '无备注' }}
+                </option>
+              </select>
+              <span v-if="dataErrors.userId" class="error-msg">{{ dataErrors.userId }}</span>
+            </div>
+            <div class="form-group">
+              <label>订单号 <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.orderId" 
+                type="text" 
+                placeholder="请输入订单号"
+                maxlength="64"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.orderId" class="error-msg">{{ dataErrors.orderId }}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>买卖方向 <span class="required">*</span></label>
+              <select v-model="dataForm.direction" @change="validateDataForm">
+                <option value="">请选择</option>
+                <option value="买入">买入</option>
+                <option value="卖出">卖出</option>
+              </select>
+              <span v-if="dataErrors.direction" class="error-msg">{{ dataErrors.direction }}</span>
+            </div>
+            <div class="form-group">
+              <label>成交量 <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.volume" 
+                type="number" 
+                step="0.000001"
+                placeholder="请输入成交量"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.volume" class="error-msg">{{ dataErrors.volume }}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>出入金 <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.entryExit" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入出入金"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.entryExit" class="error-msg">{{ dataErrors.entryExit }}</span>
+            </div>
+            <div class="form-group">
+              <label>隔夜费比例(%) <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.overnightProportion" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入隔夜费比例"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.overnightProportion" class="error-msg">{{ dataErrors.overnightProportion }}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>开仓时间 <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.openingTime" 
+                type="datetime-local" 
+                step="1"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.openingTime" class="error-msg">{{ dataErrors.openingTime }}</span>
+            </div>
+            <div class="form-group">
+              <label>平仓时间</label>
+              <input 
+                v-model="dataForm.closingTime" 
+                type="datetime-local" 
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>交易品种</label>
+              <input 
+                v-model="dataForm.varieties" 
+                type="text" 
+                placeholder="默认: lbma"
+                maxlength="64"
+              />
+            </div>
+            <div class="form-group">
+              <label>开仓价格</label>
+              <input 
+                v-model="dataForm.openingPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入开仓价格"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>平仓价格</label>
+              <input 
+                v-model="dataForm.closingPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入平仓价格"
+              />
+            </div>
+            <div class="form-group">
+              <label>收盘价</label>
+              <input 
+                v-model="dataForm.overPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入收盘价"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeDataModal">取消</button>
+          <button class="submit-btn" @click="submitAddData" :disabled="isSubmittingData">{{ isSubmittingData ? '提交中...' : '确定' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Data Table -->
+    <div class="table-section">
+      <h3 class="section-title">待处理数据</h3>
+      <DataTable
+        :columns="columns"
+        :data="pendingData"
+        :total="pendingTotal"
+        :current-page="pendingPage"
+        :page-size="pendingPageSize"
+        @page-change="handlePendingPageChange"
+        @page-size-change="handlePendingPageSizeChange"
+      >
+        <template #column-isOk="{ row }">
+          <span :class="['status-badge', row.isOk === '1' ? 'processed' : 'pending']">
+            {{ row.isOk === '1' ? '已处理' : '未处理' }}
+          </span>
+        </template>
+        <template #column-inoutPrice="{ row }">
+          <span :class="row.inoutPrice >= 0 ? 'profit' : 'loss'">
+            {{ row.inoutPrice }}
+          </span>
+        </template>
+        <template #column-actions="{ row }">
+          <button class="action-btn process" @click="handleProcess(row)">处理</button>
+        </template>
+      </DataTable>
+    </div>
+
+    <!-- Completed Data Table -->
+    <div class="table-section">
+      <h3 class="section-title">已完成数据</h3>
+      <DataTable
+        :columns="columns"
+        :data="completedData"
+        :total="completedTotal"
+        :current-page="completedPage"
+        :page-size="completedPageSize"
+        @page-change="handleCompletedPageChange"
+        @page-size-change="handleCompletedPageSizeChange"
+      >
+        <template #column-isOk="{ row }">
+          <span :class="['status-badge', row.isOk === '1' ? 'processed' : 'pending']">
+            {{ row.isOk === '1' ? '已处理' : '未处理' }}
+          </span>
+        </template>
+        <template #column-inoutPrice="{ row }">
+          <span :class="row.inoutPrice >= 0 ? 'profit' : 'loss'">
+            {{ row.inoutPrice }}
+          </span>
+        </template>
+        <template #column-actions="{ row }">
+          <button class="action-btn view" @click="handleView(row)">查看</button>
+          <button class="action-btn delete" @click="handleDelete(row)">删除</button>
+        </template>
+      </DataTable>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
-import axios from 'axios'
+import { ref, reactive, onMounted } from 'vue'
+import { addUser, getAllUser } from '@/api/user'
+import { getTraderList, addTraderData } from '@/api/trader'
+import DataTable from './DataTable.vue'
 
 export default {
   name: 'UserDashboard',
+  components: {
+    DataTable
+  },
   setup() {
-    const tableData = ref([
-      { id: 1, name: 'John Doe', email: 'john@example.com', status: 'active', date: '2024-01-15' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com', status: 'active', date: '2024-02-20' },
-      { id: 3, name: 'Bob Johnson', email: 'bob@example.com', status: 'inactive', date: '2024-03-10' },
-      { id: 4, name: 'Alice Brown', email: 'alice@example.com', status: 'active', date: '2024-04-05' },
-      { id: 5, name: 'Charlie Wilson', email: 'charlie@example.com', status: 'pending', date: '2024-05-12' }
+    const columns = ref([
+      { prop: 'id', label: '账号', width: '80px' },
+      { prop: 'orderId', label: '订单号', width: '80px' },
+      { prop: 'openingTime', label: '开仓时间', width: '120px' },
+      { prop: 'closingTime', label: '平仓时间', width: '120px' },
+      { prop: 'direction', label: '买卖方向', width: '60px' },
+      { prop: 'volume', label: '成交量', width: '60px' },
+      { prop: 'varieties', label: '交易品种', width: '60px' },
+      { prop: 'openingPrice', label: '开仓价格', width: '60px' },
+      { prop: 'closingPrice', label: '平仓价格', width: '60px' },
+      { prop: 'overnightPrice', label: '隔夜费', width: '60px' },
+      { prop: 'inoutPrice', label: '盈亏', width: '100px' },
+      { prop: 'overPrice', label: '收盘价', width: '100px' },
+      { prop: 'entryExit', label: '出入金', width: '100px' },
+      { prop: 'isOk', label: '是否处理', width: '90px' },
+      { prop: 'actions', label: '操作', width: '120px', fixed: true }
     ])
+
+    // Pending data list
+    const pendingData = ref([])
+    const pendingPage = ref(1)
+    const pendingPageSize = ref(10)
+    const pendingTotal = ref(0)
+
+    // Completed data list
+    const completedData = ref([])
+    const completedPage = ref(1)
+    const completedPageSize = ref(10)
+    const completedTotal = ref(0)
+
+    // Fetch pending data
+    const fetchPendingData = async () => {
+      try {
+        const response = await getTraderList({
+          page: pendingPage.value,
+          pageSize: pendingPageSize.value,
+          isOk: '0' // Pending status
+        })
+        if (response.data.code === 200) {
+          pendingData.value = response.data.data || []
+          pendingTotal.value = response.data.total || 0
+        }
+      } catch (error) {
+        console.error('获取待处理数据失败:', error)
+      }
+    }
+
+    // Fetch completed data
+    const fetchCompletedData = async () => {
+      try {
+        const response = await getTraderList({
+          page: completedPage.value,
+          pageSize: completedPageSize.value,
+          isOk: '1' // Completed status
+        })
+        if (response.data.code === 200) {
+          completedData.value = response.data.data || []
+          completedTotal.value = response.data.total || 0
+        }
+      } catch (error) {
+        console.error('获取已完成数据失败:', error)
+      }
+    }
+
+    // Pending data pagination handlers
+    const handlePendingPageChange = (page) => {
+      pendingPage.value = page
+      fetchPendingData()
+    }
+
+    const handlePendingPageSizeChange = (size) => {
+      pendingPageSize.value = size
+      pendingPage.value = 1
+      fetchPendingData()
+    }
+
+    // Completed data pagination handlers
+    const handleCompletedPageChange = (page) => {
+      completedPage.value = page
+      fetchCompletedData()
+    }
+
+    const handleCompletedPageSizeChange = (size) => {
+      completedPageSize.value = size
+      completedPage.value = 1
+      fetchCompletedData()
+    }
+
+    // Action handlers
+    const handleEdit = (row) => {
+      console.log('编辑:', row)
+      // TODO: Implement edit logic
+    }
+
+    const handleProcess = (row) => {
+      console.log('处理:', row)
+      // TODO: Implement process logic, then refresh pending and completed lists
+    }
+
+    const handleView = (row) => {
+      console.log('查看:', row)
+      // TODO: Implement view logic
+    }
+
+    const handleDelete = (row) => {
+      console.log('删除:', row)
+      // TODO: Implement delete logic
+    }
+
+    // Initialize data on mount
+    onMounted(() => {
+      fetchPendingData()
+      fetchCompletedData()
+    })
 
     const isAddCustomerModalVisible = ref(false)
     const isSubmitting = ref(false)
@@ -116,12 +402,19 @@ export default {
     }
 
     const showAddDataModal = () => {
-      alert('新增客户数据功能开发中...')
+      isAddDataModalVisible.value = true
+      fetchUserList()
+      resetDataForm()
     }
 
     const closeModal = () => {
       isAddCustomerModalVisible.value = false
       resetForm()
+    }
+
+    const closeDataModal = () => {
+      isAddDataModalVisible.value = false
+      resetDataForm()
     }
 
     const resetForm = () => {
@@ -179,7 +472,7 @@ export default {
       isSubmitting.value = true
 
       try {
-        const response = await axios.post('/api/user/add', {
+        const response = await addUser({
           id: formData.userAccount,
           remark: formData.remarks
         })
@@ -187,7 +480,8 @@ export default {
         if (response.data.code === 200 || response.data.success) {
           alert('客户添加成功！')
           closeModal()
-          // Optionally refresh table data here
+          // Refresh pending data list
+          fetchPendingData()
         } else {
           alert('添加失败：' + (response.data.msg || '未知错误'))
         }
@@ -199,8 +493,192 @@ export default {
       }
     }
 
+    // Add Customer Data Modal
+    const isAddDataModalVisible = ref(false)
+    const isSubmittingData = ref(false)
+    const userList = ref([])
+    
+    const dataForm = reactive({
+      userId: '',
+      orderId: '',
+      direction: '',
+      volume: '',
+      entryExit: '',
+      overnightProportion: '',
+      openingTime: '',
+      closingTime: '',
+      varieties: 'lbma',
+      openingPrice: '',
+      closingPrice: '',
+      overPrice: ''
+    })
+
+    const dataErrors = reactive({
+      userId: '',
+      orderId: '',
+      direction: '',
+      volume: '',
+      entryExit: '',
+      overnightProportion: '',
+      openingTime: ''
+    })
+
+    const fetchUserList = async () => {
+      try {
+        const response = await getAllUser()
+        if (response.data.code === 200) {
+          userList.value = response.data.data || []
+        }
+      } catch (error) {
+        console.error('获取用户列表失败:', error)
+      }
+    }
+
+    const resetDataForm = () => {
+      dataForm.userId = ''
+      dataForm.orderId = ''
+      dataForm.direction = ''
+      dataForm.volume = ''
+      dataForm.entryExit = ''
+      dataForm.overnightProportion = ''
+      dataForm.openingTime = ''
+      dataForm.closingTime = ''
+      dataForm.varieties = 'lbma'
+      dataForm.openingPrice = ''
+      dataForm.closingPrice = ''
+      dataForm.overPrice = ''
+      
+      dataErrors.userId = ''
+      dataErrors.orderId = ''
+      dataErrors.direction = ''
+      dataErrors.volume = ''
+      dataErrors.entryExit = ''
+      dataErrors.overnightProportion = ''
+      dataErrors.openingTime = ''
+    }
+
+    const validateDataForm = () => {
+      let isValid = true
+
+      if (!dataForm.userId) {
+        dataErrors.userId = '请选择用户'
+        isValid = false
+      } else {
+        dataErrors.userId = ''
+      }
+
+      if (!dataForm.orderId) {
+        dataErrors.orderId = '订单号不能为空'
+        isValid = false
+      } else {
+        dataErrors.orderId = ''
+      }
+
+      if (!dataForm.direction) {
+        dataErrors.direction = '请选择买卖方向'
+        isValid = false
+      } else {
+        dataErrors.direction = ''
+      }
+
+      if (!dataForm.volume || parseFloat(dataForm.volume) <= 0) {
+        dataErrors.volume = '成交量必须大于0'
+        isValid = false
+      } else {
+        dataErrors.volume = ''
+      }
+
+      if (dataForm.entryExit === '') {
+        dataErrors.entryExit = '出入金不能为空'
+        isValid = false
+      } else {
+        dataErrors.entryExit = ''
+      }
+
+      if (!dataForm.overnightProportion || parseFloat(dataForm.overnightProportion) < 0) {
+        dataErrors.overnightProportion = '隔夜费比例不能为空且不能为负'
+        isValid = false
+      } else {
+        dataErrors.overnightProportion = ''
+      }
+
+      if (!dataForm.openingTime) {
+        dataErrors.openingTime = '开仓时间不能为空'
+        isValid = false
+      } else {
+        dataErrors.openingTime = ''
+      }
+
+      return isValid
+    }
+
+    const submitAddData = async () => {
+      if (!validateDataForm()) {
+        return
+      }
+
+      isSubmittingData.value = true
+
+      try {
+        // Format datetime to 'yyyy-MM-dd HH:mm:ss'
+        const formatDateTime = (dateTimeLocal) => {
+          if (!dateTimeLocal) return null
+          return dateTimeLocal.replace('T', ' ') + ':00'
+        }
+
+        const response = await addTraderData({
+          id: dataForm.userId,
+          orderId: dataForm.orderId,
+          openingTime: formatDateTime(dataForm.openingTime),
+          closingTime: dataForm.closingTime ? formatDateTime(dataForm.closingTime) : null,
+          direction: dataForm.direction,
+          volume: parseFloat(dataForm.volume),
+          varieties: dataForm.varieties || 'lbma',
+          openingPrice: dataForm.openingPrice ? parseFloat(dataForm.openingPrice) : null,
+          closingPrice: dataForm.closingPrice ? parseFloat(dataForm.closingPrice) : null,
+          overnightPrice: null,
+          inoutPrice: null,
+          isOk: '0',
+          status: '1',
+          overPrice: dataForm.overPrice ? parseFloat(dataForm.overPrice) : null,
+          entryExit: parseFloat(dataForm.entryExit),
+          overnightProportion: parseFloat(dataForm.overnightProportion)
+        })
+
+        if (response.data.code === 200 || response.data.success) {
+          alert('客户数据添加成功！')
+          closeDataModal()
+          // Refresh pending data list
+          fetchPendingData()
+        } else {
+          alert('添加失败：' + (response.data.msg || '未知错误'))
+        }
+      } catch (error) {
+        console.error('添加客户数据失败:', error)
+        alert('添加失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
+      } finally {
+        isSubmittingData.value = false
+      }
+    }
+
     return {
-      tableData,
+      columns,
+      pendingData,
+      pendingPage,
+      pendingPageSize,
+      pendingTotal,
+      completedData,
+      completedPage,
+      completedPageSize,
+      completedTotal,
+      handlePendingPageChange,
+      handlePendingPageSizeChange,
+      handleCompletedPageChange,
+      handleCompletedPageSizeChange,
+      handleEdit,
+      handleProcess,
+      handleView,
+      handleDelete,
       isAddCustomerModalVisible,
       isSubmitting,
       formData,
@@ -208,9 +686,17 @@ export default {
       showAddCustomerModal,
       showAddDataModal,
       closeModal,
+      closeDataModal,
       validateUserAccount,
       validateRemarks,
-      submitAddCustomer
+      submitAddCustomer,
+      isAddDataModalVisible,
+      isSubmittingData,
+      userList,
+      dataForm,
+      dataErrors,
+      validateDataForm,
+      submitAddData
     }
   }
 }
@@ -257,34 +743,74 @@ export default {
   background: #2980b9;
 }
 
-.table-container {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.table-section {
+  margin-bottom: 40px;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  text-align: left;
-  padding: 15px;
-  border-bottom: 2px solid #ecf0f1;
+.section-title {
+  margin: 0 0 20px 0;
   color: #2c3e50;
+  font-size: 18px;
   font-weight: 600;
+  padding-left: 10px;
+  border-left: 4px solid #3498db;
 }
 
-.data-table td {
-  padding: 15px;
-  border-bottom: 1px solid #ecf0f1;
-  color: #34495e;
+.modal-large {
+  max-width: 800px;
 }
 
-.data-table tr:hover {
-  background: #f8f9fa;
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dfe6e9;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+  box-sizing: border-box;
+  transition: border-color 0.3s;
+  background: white;
+  cursor: pointer;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.modal-large {
+  max-width: 800px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dfe6e9;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+  box-sizing: border-box;
+  transition: border-color 0.3s;
+  background: white;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #3498db;
 }
 
 .status-badge {
@@ -294,19 +820,24 @@ export default {
   font-weight: 500;
 }
 
-.status-badge.active {
+.status-badge.processed {
   background: #d4edda;
   color: #155724;
-}
-
-.status-badge.inactive {
-  background: #f8d7da;
-  color: #721c24;
 }
 
 .status-badge.pending {
   background: #fff3cd;
   color: #856404;
+}
+
+.profit {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.loss {
+  color: #e74c3c;
+  font-weight: 600;
 }
 
 .action-btn {
@@ -330,6 +861,16 @@ export default {
 
 .action-btn.delete {
   background: #e74c3c;
+  color: white;
+}
+
+.action-btn.process {
+  background: #27ae60;
+  color: white;
+}
+
+.action-btn.view {
+  background: #95a5a6;
   color: white;
 }
 
