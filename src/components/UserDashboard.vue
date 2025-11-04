@@ -258,7 +258,6 @@
           </span>
         </template>
         <template #column-actions="{ row }">
-          <button class="action-btn view" @click="handleView(row)">查看</button>
           <button class="action-btn delete" @click="handleDelete(row)">删除</button>
         </template>
       </DataTable>
@@ -394,11 +393,6 @@ export default {
       editingOrderId.value = row.orderId
       showAddDataModal()
       fillDataForm(row)
-    }
-
-    const handleView = (row) => {
-      console.log('查看:', row)
-      // TODO: Implement view logic
     }
 
     const handleDelete = async (row) => {
@@ -815,7 +809,6 @@ export default {
       handleCompletedPageSizeChange,
       handleEdit,
       handleProcess,
-      handleView,
       handleDelete,
       isAddCustomerModalVisible,
       isSubmitting,
