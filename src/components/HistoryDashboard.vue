@@ -45,39 +45,23 @@
           </div>
         </div>
 
-        <!-- User Data Table (will be populated based on API you provide) -->
-        <div v-if="selectedUserId && userData.length > 0" class="data-result">
-          <p class="result-info">查询到 {{ userData.length }} 条数据</p>
-          <!-- Placeholder for user data table -->
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>订单号</th>
-                  <th>开仓时间</th>
-                  <th>平仓时间</th>
-                  <th>买卖方向</th>
-                  <th>成交量</th>
-                  <th>盈亏</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in userData" :key="item.orderId">
-                  <td>{{ item.orderId }}</td>
-                  <td>{{ item.openingTime }}</td>
-                  <td>{{ item.closingTime || '-' }}</td>
-                  <td>{{ item.direction }}</td>
-                  <td>{{ item.volume }}</td>
-                  <td :class="item.inoutPrice >= 0 ? 'profit' : 'loss'">
-                    {{ item.inoutPrice }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div v-else-if="selectedUserId && queriedOnce" class="empty-state">
-          <p>暂无数据</p>
+        <!-- User Data Table with Pagination -->
+        <div v-if="selectedUserId && hasQueried" class="data-result">
+          <DataTable
+            :columns="columns"
+            :data="userData"
+            :total="total"
+            :current-page="currentPage"
+            :page-size="pageSize"
+            @page-change="handlePageChange"
+            @page-size-change="handlePageSizeChange"
+          >
+            <template #column-inoutPrice="{ row }">
+              <span :class="row.inoutPrice >= 0 ? 'profit' : 'loss'">
+                {{ row.inoutPrice }}
+              </span>
+            </template>
+          </DataTable>
         </div>
         <div v-else class="placeholder-state">
           <p>请选择用户并点击查询</p>
@@ -90,14 +74,44 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { getAllUser } from '@/api/user'
+import { getTraderList } from '@/api/trader'
+import DataTable from './DataTable.vue'
 
 export default {
   name: 'HistoryDashboard',
+  components: {
+    DataTable
+  },
   setup() {
     const userList = ref([])
     const selectedUserId = ref('')
     const userData = ref([])
-    const queriedOnce = ref(false)
+    const hasQueried = ref(false)
+    const currentPage = ref(1)
+    const pageSize = ref(10)
+    const total = ref(0)
+
+    const columns = ref([
+      { prop: 'id', label: '账号', width: '80px' },
+      { prop: 'orderId', label: '订单号', width: '80px' },
+      { prop: 'openingTime', label: '开仓时间', width: '120px' },
+      { prop: 'closingTime', label: '平仓时间', width: '120px' },
+      { prop: 'direction', label: '买卖方向', width: '60px' },
+      { prop: 'volume', label: '成交量(盎司)', width: '60px' },
+      { prop: 'varieties', label: '交易品种', width: '60px' },
+      { prop: 'openingPrice', label: '开仓价格', width: '60px' },
+      { prop: 'closingPrice', label: '平仓价格', width: '60px' },
+      { prop: 'overnightPrice', label: '隔夜费', width: '60px' },
+      { prop: 'inoutPrice', label: '盈亏', width: '100px' },
+      { prop: 'overPrice', label: '收盘价', width: '100px' },
+      { prop: 'entryExit', label: '出入金', width: '100px' }
+    ])
+
+    // Format datetime helper function
+    const formatDateTime = (dateTimeStr) => {
+      if (!dateTimeStr) return ''
+      return dateTimeStr.replace('T', ' ')
+    }
 
     // Fetch all users
     const fetchUserList = async () => {
@@ -114,22 +128,58 @@ export default {
     // Handle user selection change
     const handleUserChange = () => {
       userData.value = []
-      queriedOnce.value = false
+      hasQueried.value = false
+      currentPage.value = 1
+      total.value = 0
     }
 
-    // Query user data (API to be provided)
+    // Query user data
     const queryUserData = async () => {
       if (!selectedUserId.value) return
       
-      queriedOnce.value = true
-      
-      // TODO: Call API to fetch user data
-      // const response = await getUserHistory({ userId: selectedUserId.value })
-      // userData.value = response.data.data || []
-      
-      console.log('Querying data for user:', selectedUserId.value)
-      // Temporary mock data
-      userData.value = []
+      hasQueried.value = true
+      currentPage.value = 1
+      await fetchUserData()
+    }
+
+    // Fetch user data with pagination
+    const fetchUserData = async () => {
+      if (!selectedUserId.value) return
+
+      try {
+        const response = await getTraderList({
+          userId: selectedUserId.value,
+          page: currentPage.value,
+          pageSize: pageSize.value,
+          isOk: '1' // Completed status for historical data
+        })
+
+        if (response.data.code === 200) {
+          const records = response.data.data.records || []
+          userData.value = records.map(record => ({
+            ...record,
+            openingTime: formatDateTime(record.openingTime),
+            closingTime: formatDateTime(record.closingTime)
+          }))
+          total.value = response.data.data.total || 0
+        }
+      } catch (error) {
+        console.error('获取用户历史数据失败:', error)
+        userData.value = []
+        total.value = 0
+      }
+    }
+
+    // Pagination handlers
+    const handlePageChange = (page) => {
+      currentPage.value = page
+      fetchUserData()
+    }
+
+    const handlePageSizeChange = (size) => {
+      pageSize.value = size
+      currentPage.value = 1
+      fetchUserData()
     }
 
     onMounted(() => {
@@ -140,9 +190,15 @@ export default {
       userList,
       selectedUserId,
       userData,
-      queriedOnce,
+      hasQueried,
+      currentPage,
+      pageSize,
+      total,
+      columns,
       handleUserChange,
-      queryUserData
+      queryUserData,
+      handlePageChange,
+      handlePageSizeChange
     }
   }
 }
@@ -163,7 +219,7 @@ export default {
 
 .main-grid {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 20px;
   align-items: start;
 }
@@ -275,45 +331,7 @@ export default {
 }
 
 .data-result {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.result-info {
-  margin: 0 0 15px 0;
-  color: #2c3e50;
-  font-size: 14px;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  text-align: left;
-  padding: 15px;
-  border-bottom: 2px solid #ecf0f1;
-  color: #2c3e50;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.data-table td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #ecf0f1;
-  color: #34495e;
-  white-space: nowrap;
-}
-
-.data-table tr:hover {
-  background: #f8f9fa;
+  margin-top: 20px;
 }
 
 .profit {
@@ -324,20 +342,6 @@ export default {
 .loss {
   color: #e74c3c;
   font-weight: 600;
-}
-
-.empty-state {
-  background: white;
-  border-radius: 10px;
-  padding: 60px 20px;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.empty-state p {
-  margin: 0;
-  color: #95a5a6;
-  font-size: 16px;
 }
 
 .placeholder-state {

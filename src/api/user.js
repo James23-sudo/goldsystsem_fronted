@@ -28,7 +28,7 @@ export const getUserList = (params) => {
  * @returns {Promise} API response
  */
 export const getAllUser = () => {
-  return axios.get('/api/user/getAllUser')
+  return axios.get('/api/user')
 }
 
 /**
