@@ -51,7 +51,7 @@
     <div v-if="isAddDataModalVisible" class="modal-overlay" @click="closeDataModal">
       <div class="modal-content modal-large" @click.stop>
         <div class="modal-header">
-          <h3>新增客户数据</h3>
+          <h3>{{ isEditMode ? '处理客户数据' : '新增客户数据' }}</h3>
           <button class="close-btn" @click="closeDataModal">×</button>
         </div>
         <div class="modal-body">
@@ -90,12 +90,12 @@
               <span v-if="dataErrors.direction" class="error-msg">{{ dataErrors.direction }}</span>
             </div>
             <div class="form-group">
-              <label>成交量 <span class="required">*</span></label>
+              <label>成交量(盎司) <span class="required">*</span></label>
               <input 
                 v-model="dataForm.volume" 
                 type="number" 
                 step="0.000001"
-                placeholder="请输入成交量"
+                placeholder="请输入成交量(盎司)"
                 @input="validateDataForm"
               />
               <span v-if="dataErrors.volume" class="error-msg">{{ dataErrors.volume }}</span>
@@ -209,11 +209,6 @@
         @page-change="handlePendingPageChange"
         @page-size-change="handlePendingPageSizeChange"
       >
-        <template #column-isOk="{ row }">
-          <span :class="['status-badge', row.isOk === '1' ? 'processed' : 'pending']">
-            {{ row.isOk === '1' ? '已处理' : '未处理' }}
-          </span>
-        </template>
         <template #column-inoutPrice="{ row }">
           <span :class="row.inoutPrice >= 0 ? 'profit' : 'loss'">
             {{ row.inoutPrice }}
@@ -237,11 +232,6 @@
         @page-change="handleCompletedPageChange"
         @page-size-change="handleCompletedPageSizeChange"
       >
-        <template #column-isOk="{ row }">
-          <span :class="['status-badge', row.isOk === '1' ? 'processed' : 'pending']">
-            {{ row.isOk === '1' ? '已处理' : '未处理' }}
-          </span>
-        </template>
         <template #column-inoutPrice="{ row }">
           <span :class="row.inoutPrice >= 0 ? 'profit' : 'loss'">
             {{ row.inoutPrice }}
@@ -259,7 +249,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import { addUser, getAllUser } from '@/api/user'
-import { getTraderList, addTraderData } from '@/api/trader'
+import { getTraderList, addTraderData, updateTraderData } from '@/api/trader'
 import DataTable from './DataTable.vue'
 
 export default {
@@ -274,7 +264,7 @@ export default {
       { prop: 'openingTime', label: '开仓时间', width: '120px' },
       { prop: 'closingTime', label: '平仓时间', width: '120px' },
       { prop: 'direction', label: '买卖方向', width: '60px' },
-      { prop: 'volume', label: '成交量', width: '60px' },
+      { prop: 'volume', label: '成交量(盎司)', width: '60px' },
       { prop: 'varieties', label: '交易品种', width: '60px' },
       { prop: 'openingPrice', label: '开仓价格', width: '60px' },
       { prop: 'closingPrice', label: '平仓价格', width: '60px' },
@@ -282,7 +272,6 @@ export default {
       { prop: 'inoutPrice', label: '盈亏', width: '100px' },
       { prop: 'overPrice', label: '收盘价', width: '100px' },
       { prop: 'entryExit', label: '出入金', width: '100px' },
-      { prop: 'isOk', label: '是否处理', width: '90px' },
       { prop: 'actions', label: '操作', width: '120px', fixed: true }
     ])
 
@@ -298,6 +287,12 @@ export default {
     const completedPageSize = ref(10)
     const completedTotal = ref(0)
 
+    // Format datetime helper function
+    const formatDateTime = (dateTimeStr) => {
+      if (!dateTimeStr) return ''
+      return dateTimeStr.replace('T', ' ')
+    }
+
     // Fetch pending data
     const fetchPendingData = async () => {
       try {
@@ -307,8 +302,13 @@ export default {
           isOk: '0' // Pending status
         })
         if (response.data.code === 200) {
-          pendingData.value = response.data.data || []
-          pendingTotal.value = response.data.total || 0
+          const records = response.data.data.records || []
+          pendingData.value = records.map(record => ({
+            ...record,
+            openingTime: formatDateTime(record.openingTime),
+            closingTime: formatDateTime(record.closingTime)
+          }))
+          pendingTotal.value = response.data.data.total || 0
         }
       } catch (error) {
         console.error('获取待处理数据失败:', error)
@@ -324,8 +324,13 @@ export default {
           isOk: '1' // Completed status
         })
         if (response.data.code === 200) {
-          completedData.value = response.data.data || []
-          completedTotal.value = response.data.total || 0
+          const records = response.data.data.records || []
+          completedData.value = records.map(record => ({
+            ...record,
+            openingTime: formatDateTime(record.openingTime),
+            closingTime: formatDateTime(record.closingTime)
+          }))
+          completedTotal.value = response.data.data.total || 0
         }
       } catch (error) {
         console.error('获取已完成数据失败:', error)
@@ -364,7 +369,11 @@ export default {
 
     const handleProcess = (row) => {
       console.log('处理:', row)
-      // TODO: Implement process logic, then refresh pending and completed lists
+      isEditMode.value = true
+      editingRowId.value = row.id
+      editingOrderId.value = row.orderId
+      showAddDataModal()
+      fillDataForm(row)
     }
 
     const handleView = (row) => {
@@ -372,9 +381,28 @@ export default {
       // TODO: Implement view logic
     }
 
-    const handleDelete = (row) => {
-      console.log('删除:', row)
-      // TODO: Implement delete logic
+    const handleDelete = async (row) => {
+      if (!confirm('确定要删除该数据吗？')) {
+        return
+      }
+
+      try {
+        const response = await updateTraderData({
+          id: row.id,
+          orderId: row.orderId,
+          status: '0'
+        })
+
+        if (response.data.code === 200 || response.data.success) {
+          alert('删除成功！')
+          fetchCompletedData()
+        } else {
+          alert('删除失败：' + (response.data.msg || '未知错误'))
+        }
+      } catch (error) {
+        console.error('删除失败:', error)
+        alert('删除失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
+      }
     }
 
     // Initialize data on mount
@@ -404,7 +432,9 @@ export default {
     const showAddDataModal = () => {
       isAddDataModalVisible.value = true
       fetchUserList()
-      resetDataForm()
+      if (!isEditMode.value) {
+        resetDataForm()
+      }
     }
 
     const closeModal = () => {
@@ -414,6 +444,9 @@ export default {
 
     const closeDataModal = () => {
       isAddDataModalVisible.value = false
+      isEditMode.value = false
+      editingRowId.value = null
+      editingOrderId.value = null
       resetDataForm()
     }
 
@@ -496,6 +529,9 @@ export default {
     // Add Customer Data Modal
     const isAddDataModalVisible = ref(false)
     const isSubmittingData = ref(false)
+    const isEditMode = ref(false)
+    const editingRowId = ref(null)
+    const editingOrderId = ref(null)
     const userList = ref([])
     
     const dataForm = reactive({
@@ -555,6 +591,27 @@ export default {
       dataErrors.entryExit = ''
       dataErrors.overnightProportion = ''
       dataErrors.openingTime = ''
+    }
+
+    const fillDataForm = (row) => {
+      // Helper to convert 'yyyy-MM-dd HH:mm:ss' to 'yyyy-MM-ddTHH:mm:ss' for datetime-local input
+      const toDatetimeLocal = (dateTimeStr) => {
+        if (!dateTimeStr) return ''
+        return dateTimeStr.replace(' ', 'T')
+      }
+
+      dataForm.userId = row.id || ''
+      dataForm.orderId = row.orderId || ''
+      dataForm.direction = row.direction || ''
+      dataForm.volume = row.volume || ''
+      dataForm.entryExit = row.entryExit || ''
+      dataForm.overnightProportion = row.overnightProportion || ''
+      dataForm.openingTime = toDatetimeLocal(row.openingTime)
+      dataForm.closingTime = toDatetimeLocal(row.closingTime)
+      dataForm.varieties = row.varieties || 'lbma'
+      dataForm.openingPrice = row.openingPrice || ''
+      dataForm.closingPrice = row.closingPrice || ''
+      dataForm.overPrice = row.overPrice || ''
     }
 
     const validateDataForm = () => {
@@ -623,10 +680,10 @@ export default {
         // Format datetime to 'yyyy-MM-dd HH:mm:ss'
         const formatDateTime = (dateTimeLocal) => {
           if (!dateTimeLocal) return null
-          return dateTimeLocal.replace('T', ' ') + ':00'
+          return dateTimeLocal.replace('T', ' ')
         }
 
-        const response = await addTraderData({
+        const requestData = {
           id: dataForm.userId,
           orderId: dataForm.orderId,
           openingTime: formatDateTime(dataForm.openingTime),
@@ -643,19 +700,29 @@ export default {
           overPrice: dataForm.overPrice ? parseFloat(dataForm.overPrice) : null,
           entryExit: parseFloat(dataForm.entryExit),
           overnightProportion: parseFloat(dataForm.overnightProportion)
-        })
+        }
+
+        let response
+        if (isEditMode.value) {
+          // Update mode
+          response = await updateTraderData(requestData)
+        } else {
+          // Add mode
+          response = await addTraderData(requestData)
+        }
 
         if (response.data.code === 200 || response.data.success) {
-          alert('客户数据添加成功！')
+          alert(isEditMode.value ? '处理成功！' : '客户数据添加成功！')
           closeDataModal()
-          // Refresh pending data list
+          // Refresh both pending and completed data lists
           fetchPendingData()
+          fetchCompletedData()
         } else {
-          alert('添加失败：' + (response.data.msg || '未知错误'))
+          alert((isEditMode.value ? '处理' : '添加') + '失败：' + (response.data.msg || '未知错误'))
         }
       } catch (error) {
-        console.error('添加客户数据失败:', error)
-        alert('添加失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
+        console.error((isEditMode.value ? '处理' : '添加') + '客户数据失败:', error)
+        alert((isEditMode.value ? '处理' : '添加') + '失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
       } finally {
         isSubmittingData.value = false
       }
@@ -692,6 +759,7 @@ export default {
       submitAddCustomer,
       isAddDataModalVisible,
       isSubmittingData,
+      isEditMode,
       userList,
       dataForm,
       dataErrors,

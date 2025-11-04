@@ -37,6 +37,7 @@
       </div>
       <div class="pagination-controls">
         <select v-model="currentPageSize" @change="handlePageSizeChange" class="page-size-select">
+          <option :value="5">5条/页</option>
           <option :value="10">10条/页</option>
           <option :value="20">20条/页</option>
           <option :value="50">50条/页</option>
