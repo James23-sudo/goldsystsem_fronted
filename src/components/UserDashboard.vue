@@ -230,7 +230,18 @@
 
     <!-- Pending Data Table -->
     <div class="table-section">
-      <h3 class="section-title">待处理数据</h3>
+      <div class="table-header">
+        <h3 class="section-title">待处理数据</h3>
+        <div class="filter-controls">
+          <label>选择用户：</label>
+          <select v-model="pendingSelectedUserId" @change="handlePendingUserChange" class="user-filter-select">
+            <option value="">全部用户</option>
+            <option v-for="user in userList" :key="user.id" :value="user.id">
+              {{ user.id }} - {{ user.remark || '无备注' }}
+            </option>
+          </select>
+        </div>
+      </div>
       <DataTable
         :columns="columns"
         :data="pendingData"
@@ -253,7 +264,18 @@
 
     <!-- Completed Data Table -->
     <div class="table-section">
-      <h3 class="section-title">已完成数据</h3>
+      <div class="table-header">
+        <h3 class="section-title">已完成数据</h3>
+        <div class="filter-controls">
+          <label>选择用户：</label>
+          <select v-model="completedSelectedUserId" @change="handleCompletedUserChange" class="user-filter-select">
+            <option value="">全部用户</option>
+            <option v-for="user in userList" :key="user.id" :value="user.id">
+              {{ user.id }} - {{ user.remark || '无备注' }}
+            </option>
+          </select>
+        </div>
+      </div>
       <DataTable
         :columns="columns"
         :data="completedData"
@@ -269,6 +291,7 @@
           </span>
         </template>
         <template #column-actions="{ row }">
+          <button class="action-btn edit" @click="handleEdit(row)">编辑</button>
           <button class="action-btn delete" @click="handleDelete(row)">删除</button>
         </template>
       </DataTable>
@@ -310,12 +333,14 @@ export default {
     const pendingPage = ref(1)
     const pendingPageSize = ref(10)
     const pendingTotal = ref(0)
+    const pendingSelectedUserId = ref('')
 
     // Completed data list
     const completedData = ref([])
     const completedPage = ref(1)
     const completedPageSize = ref(10)
     const completedTotal = ref(0)
+    const completedSelectedUserId = ref('')
 
     // Format datetime helper function
     const formatDateTime = (dateTimeStr) => {
@@ -326,11 +351,18 @@ export default {
     // Fetch pending data
     const fetchPendingData = async () => {
       try {
-        const response = await getTraderList({
+        const params = {
           page: pendingPage.value,
           pageSize: pendingPageSize.value,
           isOk: '0' // Pending status
-        })
+        }
+        
+        // Add userId filter if selected
+        if (pendingSelectedUserId.value) {
+          params.userId = pendingSelectedUserId.value
+        }
+        
+        const response = await getTraderList(params)
         if (response.data.code === 200) {
           const records = response.data.data.records || []
           pendingData.value = records.map(record => ({
@@ -348,11 +380,18 @@ export default {
     // Fetch completed data
     const fetchCompletedData = async () => {
       try {
-        const response = await getTraderList({
+        const params = {
           page: completedPage.value,
           pageSize: completedPageSize.value,
           isOk: '1' // Completed status
-        })
+        }
+        
+        // Add userId filter if selected
+        if (completedSelectedUserId.value) {
+          params.userId = completedSelectedUserId.value
+        }
+        
+        const response = await getTraderList(params)
         if (response.data.code === 200) {
           const records = response.data.data.records || []
           completedData.value = records.map(record => ({
@@ -391,10 +430,26 @@ export default {
       fetchCompletedData()
     }
 
+    // Handle user filter change for pending data
+    const handlePendingUserChange = () => {
+      pendingPage.value = 1
+      fetchPendingData()
+    }
+
+    // Handle user filter change for completed data
+    const handleCompletedUserChange = () => {
+      completedPage.value = 1
+      fetchCompletedData()
+    }
+
     // Action handlers
     const handleEdit = (row) => {
       console.log('编辑:', row)
-      // TODO: Implement edit logic
+      isEditMode.value = true
+      editingRowId.value = row.id
+      editingOrderId.value = row.orderId
+      showAddDataModal()
+      fillDataForm(row)
     }
 
     const handleProcess = (row) => {
@@ -432,6 +487,7 @@ export default {
 
     // Initialize data on mount
     onMounted(() => {
+      fetchUserList()
       fetchPendingData()
       fetchCompletedData()
     })
@@ -831,14 +887,18 @@ export default {
       pendingPage,
       pendingPageSize,
       pendingTotal,
+      pendingSelectedUserId,
       completedData,
       completedPage,
       completedPageSize,
       completedTotal,
+      completedSelectedUserId,
       handlePendingPageChange,
       handlePendingPageSizeChange,
+      handlePendingUserChange,
       handleCompletedPageChange,
       handleCompletedPageSizeChange,
+      handleCompletedUserChange,
       handleEdit,
       handleProcess,
       handleDelete,
@@ -914,13 +974,48 @@ export default {
   margin-bottom: 40px;
 }
 
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .section-title {
-  margin: 0 0 20px 0;
+  margin: 0;
   color: #2c3e50;
   font-size: 18px;
   font-weight: 600;
   padding-left: 10px;
   border-left: 4px solid #3498db;
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-controls label {
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.user-filter-select {
+  padding: 8px 12px;
+  border: 1px solid #dfe6e9;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+  background: white;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.user-filter-select:focus {
+  outline: none;
+  border-color: #3498db;
 }
 
 .modal-large {
