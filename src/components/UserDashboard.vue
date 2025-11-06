@@ -58,12 +58,19 @@
           <div class="form-row">
             <div class="form-group">
               <label>选择用户 <span class="required">*</span></label>
-              <select v-model="dataForm.userId" @change="validateDataForm">
+              <input 
+                list="modal-user-list" 
+                v-model="dataForm.userId" 
+                @change="validateDataForm"
+                @input="validateDataForm"
+                placeholder="请选择用户"
+              />
+              <datalist id="modal-user-list">
                 <option value="">请选择用户</option>
                 <option v-for="user in userList" :key="user.id" :value="user.id">
                   {{ user.id }} - {{ user.remark || '无备注' }}
                 </option>
-              </select>
+              </datalist>
               <span v-if="dataErrors.userId" class="error-msg">{{ dataErrors.userId }}</span>
             </div>
             <div class="form-group">

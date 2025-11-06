@@ -6,39 +6,26 @@
 
     <!-- Main Content Grid -->
     <div class="main-grid">
-      <!-- User List Section -->
-      <div class="table-section">
-        <h3 class="section-title">用户信息列表</h3>
-        <div class="user-list-container">
-          <table class="user-table">
-            <thead>
-              <tr>
-                <th style="width: 50%;">用户账号</th>
-                <th style="width: 50%;">备注</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in userList" :key="user.id">
-                <td>{{ user.id }}</td>
-                <td>{{ user.remark || '-' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- User Data Query Section -->
       <div class="table-section">
         <div class="query-header">
           <h3 class="section-title">用户历史数据</h3>
           <div class="query-controls">
             <label>选择用户：</label>
-            <select v-model="selectedUserId" @change="handleUserChange" class="user-select">
+            <input 
+              list="history-user-list" 
+              v-model="selectedUserId" 
+              @change="handleUserChange"
+              @input="handleUserChange"
+              class="user-select"
+              placeholder="请选择用户"
+            />
+            <datalist id="history-user-list">
               <option value="">请选择用户</option>
-              <option v-for="user in userList" :key="user.id" :value="user.id">
+              <option v-for="user in allUsers" :key="user.id" :value="user.id">
                 {{ user.id }} - {{ user.remark || '无备注' }}
               </option>
-            </select>
+            </datalist>
             <button class="query-btn" @click="queryUserData" :disabled="!selectedUserId">
               查询
             </button>
@@ -67,13 +54,27 @@
           <p>请选择用户并点击查询</p>
         </div>
       </div>
+
+      <!-- User List Section -->
+      <div class="table-section">
+        <h3 class="section-title">用户信息列表</h3>
+        <DataTable
+          :columns="userColumns"
+          :data="userList"
+          :total="userTotal"
+          :current-page="userPage"
+          :page-size="userPageSize"
+          @page-change="handleUserPageChange"
+          @page-size-change="handleUserPageSizeChange"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
-import { getAllUser } from '@/api/user'
+import { getAllUser, getUserByPage } from '@/api/user'
 import { getTraderList } from '@/api/trader'
 import DataTable from './DataTable.vue'
 
@@ -84,12 +85,21 @@ export default {
   },
   setup() {
     const userList = ref([])
+    const userPage = ref(1)
+    const userPageSize = ref(10)
+    const userTotal = ref(0)
+    const allUsers = ref([]) // For datalist dropdown
     const selectedUserId = ref('')
     const userData = ref([])
     const hasQueried = ref(false)
     const currentPage = ref(1)
     const pageSize = ref(10)
     const total = ref(0)
+
+    const userColumns = ref([
+      { prop: 'id', label: '用户账号', width: '200px' },
+      { prop: 'remark', label: '备注', width: 'auto' }
+    ])
 
     const columns = ref([
       { prop: 'id', label: '账号', width: '80px' },
@@ -113,15 +123,31 @@ export default {
       return dateTimeStr.replace('T', ' ')
     }
 
-    // Fetch all users
-    const fetchUserList = async () => {
+    // Fetch all users for dropdown
+    const fetchAllUsers = async () => {
       try {
         const response = await getAllUser()
         if (response.data.code === 200) {
-          userList.value = response.data.data || []
+          allUsers.value = response.data.data || []
         }
       } catch (error) {
         console.error('获取用户列表失败:', error)
+      }
+    }
+
+    // Fetch users by page for the table
+    const fetchUserList = async () => {
+      try {
+        const response = await getUserByPage({
+          page: userPage.value,
+          size: userPageSize.value
+        })
+        if (response.data.code === 200) {
+          userList.value = response.data.data.records || []
+          userTotal.value = response.data.data.total || 0
+        }
+      } catch (error) {
+        console.error('获取分页用户列表失败:', error)
       }
     }
 
@@ -170,6 +196,18 @@ export default {
       }
     }
 
+    // User list pagination handlers
+    const handleUserPageChange = (page) => {
+      userPage.value = page
+      fetchUserList()
+    }
+
+    const handleUserPageSizeChange = (size) => {
+      userPageSize.value = size
+      userPage.value = 1
+      fetchUserList()
+    }
+
     // Pagination handlers
     const handlePageChange = (page) => {
       currentPage.value = page
@@ -183,11 +221,17 @@ export default {
     }
 
     onMounted(() => {
+      fetchAllUsers()
       fetchUserList()
     })
 
     return {
       userList,
+      userPage,
+      userPageSize,
+      userTotal,
+      userColumns,
+      allUsers,
       selectedUserId,
       userData,
       hasQueried,
@@ -198,7 +242,9 @@ export default {
       handleUserChange,
       queryUserData,
       handlePageChange,
-      handlePageSizeChange
+      handlePageSizeChange,
+      handleUserPageChange,
+      handleUserPageSizeChange
     }
   }
 }
@@ -218,10 +264,9 @@ export default {
 }
 
 .main-grid {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
 .table-section {
@@ -237,42 +282,6 @@ export default {
   font-weight: 600;
   padding-left: 10px;
   border-left: 4px solid #3498db;
-}
-
-.user-list-container {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
-}
-
-.user-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.user-table th {
-  text-align: left;
-  padding: 15px;
-  border-bottom: 2px solid #ecf0f1;
-  color: #2c3e50;
-  font-weight: 600;
-  background: white;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.user-table td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #ecf0f1;
-  color: #34495e;
-}
-
-.user-table tr:hover {
-  background: #f8f9fa;
 }
 
 .query-header {

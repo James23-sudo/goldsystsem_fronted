@@ -32,6 +32,17 @@ export const getAllUser = () => {
 }
 
 /**
+ * Get users by page
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number
+ * @param {number} params.pageSize - Page size
+ * @returns {Promise} API response
+ */
+export const getUserByPage = (params) => {
+  return axios.get('/api/user/list', { params })
+}
+
+/**
  * Add customer data
  * @param {Object} data - Customer data
  * @returns {Promise} API response
