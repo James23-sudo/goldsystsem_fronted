@@ -97,8 +97,16 @@ export default {
     const total = ref(0)
 
     const userColumns = ref([
-      { prop: 'id', label: '用户账号', width: '200px' },
-      { prop: 'remark', label: '备注', width: 'auto' }
+      { prop: 'id', label: '用户账号', width: '100px' },
+      { prop: 'remark', label: '备注', width: '150px' },
+      { prop: 'left_money', label: '余额', width: '120px' },
+      { prop: 'value', label: '净值', width: '120px' },
+      { prop: 'deposit', label: '保证金', width: '120px' },
+      { prop: 'can_pay', label: '可用预付款', width: '120px' },
+      { prop: 'was_pay', label: '已用预付款', width: '120px' },
+      { prop: 'was_income', label: '已平仓盈亏', width: '120px' },
+      { prop: 'having_income', label: '持仓盈亏', width: '120px' },
+      { prop: 'total_income', label: '总盈亏', width: '120px' }
     ])
 
     const columns = ref([
