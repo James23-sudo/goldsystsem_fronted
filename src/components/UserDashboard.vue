@@ -233,13 +233,27 @@
       <div class="table-header">
         <h3 class="section-title">待处理数据</h3>
         <div class="filter-controls">
+          <label>交易时段：</label>
+          <select v-model="pendingSelectedTraderSelect" @change="handlePendingTraderSelectChange" class="user-filter-select">
+            <option value="">全部</option>
+            <option value="am">am</option>
+            <option value="pm">pm</option>
+          </select>
           <label>选择用户：</label>
-          <select v-model="pendingSelectedUserId" @change="handlePendingUserChange" class="user-filter-select">
+          <input 
+            list="pending-user-list" 
+            v-model="pendingSelectedUserId" 
+            @change="handlePendingUserChange"
+            @input="handlePendingUserChange"
+            class="user-filter-select"
+            placeholder="全部用户"
+          />
+          <datalist id="pending-user-list">
             <option value="">全部用户</option>
             <option v-for="user in userList" :key="user.id" :value="user.id">
               {{ user.id }} - {{ user.remark || '无备注' }}
             </option>
-          </select>
+          </datalist>
         </div>
       </div>
       <DataTable
@@ -267,13 +281,27 @@
       <div class="table-header">
         <h3 class="section-title">已完成数据</h3>
         <div class="filter-controls">
+          <label>交易时段：</label>
+          <select v-model="completedSelectedTraderSelect" @change="handleCompletedTraderSelectChange" class="user-filter-select">
+            <option value="">全部</option>
+            <option value="am">am</option>
+            <option value="pm">pm</option>
+          </select>
           <label>选择用户：</label>
-          <select v-model="completedSelectedUserId" @change="handleCompletedUserChange" class="user-filter-select">
+          <input 
+            list="completed-user-list" 
+            v-model="completedSelectedUserId" 
+            @change="handleCompletedUserChange"
+            @input="handleCompletedUserChange"
+            class="user-filter-select"
+            placeholder="全部用户"
+          />
+          <datalist id="completed-user-list">
             <option value="">全部用户</option>
             <option v-for="user in userList" :key="user.id" :value="user.id">
               {{ user.id }} - {{ user.remark || '无备注' }}
             </option>
-          </select>
+          </datalist>
         </div>
       </div>
       <DataTable
@@ -316,6 +344,7 @@ export default {
       { prop: 'orderId', label: '订单号', width: '80px' },
       { prop: 'openingTime', label: '开仓时间', width: '120px' },
       { prop: 'direction', label: '买卖方向', width: '60px' },
+      { prop: 'traderSelect', label: '交易时段', width: '60px' },
       { prop: 'volume', label: '成交量(盎司)', width: '60px' },
       { prop: 'varieties', label: '交易品种', width: '60px' },
       { prop: 'openingPrice', label: '开仓价格', width: '60px' },
@@ -334,6 +363,7 @@ export default {
     const pendingPageSize = ref(10)
     const pendingTotal = ref(0)
     const pendingSelectedUserId = ref('')
+    const pendingSelectedTraderSelect = ref('')
 
     // Completed data list
     const completedData = ref([])
@@ -341,6 +371,7 @@ export default {
     const completedPageSize = ref(10)
     const completedTotal = ref(0)
     const completedSelectedUserId = ref('')
+    const completedSelectedTraderSelect = ref('')
 
     // Format datetime helper function
     const formatDateTime = (dateTimeStr) => {
@@ -360,6 +391,11 @@ export default {
         // Add userId filter if selected
         if (pendingSelectedUserId.value) {
           params.userId = pendingSelectedUserId.value
+        }
+        
+        // Add traderSelect filter if selected
+        if (pendingSelectedTraderSelect.value) {
+          params.traderSelect = pendingSelectedTraderSelect.value
         }
         
         const response = await getTraderList(params)
@@ -389,6 +425,11 @@ export default {
         // Add userId filter if selected
         if (completedSelectedUserId.value) {
           params.userId = completedSelectedUserId.value
+        }
+        
+        // Add traderSelect filter if selected
+        if (completedSelectedTraderSelect.value) {
+          params.traderSelect = completedSelectedTraderSelect.value
         }
         
         const response = await getTraderList(params)
@@ -438,6 +479,18 @@ export default {
 
     // Handle user filter change for completed data
     const handleCompletedUserChange = () => {
+      completedPage.value = 1
+      fetchCompletedData()
+    }
+
+    // Handle trader select filter change for pending data
+    const handlePendingTraderSelectChange = () => {
+      pendingPage.value = 1
+      fetchPendingData()
+    }
+
+    // Handle trader select filter change for completed data
+    const handleCompletedTraderSelectChange = () => {
       completedPage.value = 1
       fetchCompletedData()
     }
@@ -888,17 +941,21 @@ export default {
       pendingPageSize,
       pendingTotal,
       pendingSelectedUserId,
+      pendingSelectedTraderSelect,
       completedData,
       completedPage,
       completedPageSize,
       completedTotal,
       completedSelectedUserId,
+      completedSelectedTraderSelect,
       handlePendingPageChange,
       handlePendingPageSizeChange,
       handlePendingUserChange,
+      handlePendingTraderSelectChange,
       handleCompletedPageChange,
       handleCompletedPageSizeChange,
       handleCompletedUserChange,
+      handleCompletedTraderSelectChange,
       handleEdit,
       handleProcess,
       handleDelete,
