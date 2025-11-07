@@ -5,6 +5,7 @@
       <div class="button-group">
         <button class="add-btn" @click="showAddCustomerModal">+ 新增客户</button>
         <button class="add-btn data-btn" @click="showAddDataModal">+ 新增客户数据</button>
+        <button class="add-btn price-btn" @click="showAddPriceModal">+ 新增价格</button>
       </div>
     </div>
 
@@ -43,6 +44,77 @@
         <div class="modal-footer">
           <button class="cancel-btn" @click="closeModal">取消</button>
           <button class="submit-btn" @click="submitAddCustomer" :disabled="isSubmitting">{{ isSubmitting ? '提交中...' : '确定' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Price Modal -->
+    <div v-if="isAddPriceModalVisible" class="modal-overlay" @click="closePriceModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>新增价格</h3>
+          <button class="close-btn" @click="closePriceModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>日期 <span class="required">*</span></label>
+            <input 
+              v-model="priceForm.priceDate" 
+              type="date" 
+              @input="validatePriceForm"
+            />
+            <span v-if="priceErrors.priceDate" class="error-msg">{{ priceErrors.priceDate }}</span>
+          </div>
+          <div class="form-group">
+            <label>买入价格 <span class="required">*</span></label>
+            <input 
+              v-model="priceForm.buyPrice" 
+              type="number" 
+              step="0.01"
+              placeholder="请输入买入价格"
+              @input="validatePriceForm"
+            />
+            <span v-if="priceErrors.buyPrice" class="error-msg">{{ priceErrors.buyPrice }}</span>
+          </div>
+          <div class="form-group">
+            <label>卖出价格 <span class="required">*</span></label>
+            <input 
+              v-model="priceForm.sellPrice" 
+              type="number" 
+              step="0.01"
+              placeholder="请输入卖出价格"
+              @input="validatePriceForm"
+            />
+            <span v-if="priceErrors.sellPrice" class="error-msg">{{ priceErrors.sellPrice }}</span>
+          </div>
+          <div class="form-group">
+            <label>选择标识 <span class="required">*</span></label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input 
+                  type="radio" 
+                  v-model="priceForm.isSelectAm" 
+                  value="1"
+                  @change="validatePriceForm"
+                />
+                <span>上午价格(am)</span>
+              </label>
+              <label class="radio-label">
+                <input 
+                  type="radio" 
+                  v-model="priceForm.isSelectAm" 
+                  value="0"
+                  @change="validatePriceForm"
+                />
+                <span>下午价格(pm)</span>
+              </label>
+            </div>
+            <span v-if="priceErrors.isSelectAm" class="error-msg">{{ priceErrors.isSelectAm }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closePriceModal">取消</button>
+          <button class="submit-btn" @click="submitAddPrice" :disabled="isSubmittingPrice">{{ isSubmittingPrice ? '提交中...' : '确定' }}</button>
         </div>
       </div>
     </div>
@@ -338,6 +410,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { addUser, getAllUser } from '@/api/user'
 import { getTraderList, addTraderData, updateTraderData } from '@/api/trader'
+import { savePriceData } from '@/api/price'
 import DataTable from './DataTable.vue'
 
 export default {
@@ -668,6 +741,111 @@ export default {
     }
 
     // Add Customer Data Modal
+    // Add Price Modal
+    const isAddPriceModalVisible = ref(false)
+    const isSubmittingPrice = ref(false)
+    
+    const priceForm = reactive({
+      priceDate: '',
+      buyPrice: '',
+      sellPrice: '',
+      isSelectAm: ''
+    })
+
+    const priceErrors = reactive({
+      priceDate: '',
+      buyPrice: '',
+      sellPrice: '',
+      isSelectAm: ''
+    })
+
+    const showAddPriceModal = () => {
+      isAddPriceModalVisible.value = true
+      resetPriceForm()
+    }
+
+    const closePriceModal = () => {
+      isAddPriceModalVisible.value = false
+      resetPriceForm()
+    }
+
+    const resetPriceForm = () => {
+      priceForm.priceDate = ''
+      priceForm.buyPrice = ''
+      priceForm.sellPrice = ''
+      priceForm.isSelectAm = ''
+      
+      priceErrors.priceDate = ''
+      priceErrors.buyPrice = ''
+      priceErrors.sellPrice = ''
+      priceErrors.isSelectAm = ''
+    }
+
+    const validatePriceForm = () => {
+      let isValid = true
+
+      if (!priceForm.priceDate) {
+        priceErrors.priceDate = '日期不能为空'
+        isValid = false
+      } else {
+        priceErrors.priceDate = ''
+      }
+
+      if (!priceForm.buyPrice || parseFloat(priceForm.buyPrice) <= 0) {
+        priceErrors.buyPrice = '买入价格必须大于0'
+        isValid = false
+      } else {
+        priceErrors.buyPrice = ''
+      }
+
+      if (!priceForm.sellPrice || parseFloat(priceForm.sellPrice) <= 0) {
+        priceErrors.sellPrice = '卖出价格必须大于0'
+        isValid = false
+      } else {
+        priceErrors.sellPrice = ''
+      }
+
+      if (priceForm.isSelectAm === '') {
+        priceErrors.isSelectAm = '请选择上午或下午价格'
+        isValid = false
+      } else {
+        priceErrors.isSelectAm = ''
+      }
+
+      return isValid
+    }
+
+    const submitAddPrice = async () => {
+      if (!validatePriceForm()) {
+        return
+      }
+
+      isSubmittingPrice.value = true
+
+      try {
+        const requestData = {
+          priceDate: priceForm.priceDate,
+          buyPrice: parseFloat(priceForm.buyPrice),
+          sellPrice: parseFloat(priceForm.sellPrice),
+          isSelectAm: priceForm.isSelectAm
+        }
+
+        const response = await savePriceData(requestData)
+        
+        if (response.data.code === 200 || response.data.success) {
+          alert('价格添加成功！')
+          closePriceModal()
+        } else {
+          alert('添加失败：' + (response.data.msg || '未知错误'))
+        }
+      } catch (error) {
+        console.error('添加价格失败:', error)
+        alert('添加失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
+      } finally {
+        isSubmittingPrice.value = false
+      }
+    }
+
     const isAddDataModalVisible = ref(false)
     const isSubmittingData = ref(false)
     const isEditMode = ref(false)
@@ -977,6 +1155,14 @@ export default {
       validateUserAccount,
       validateRemarks,
       submitAddCustomer,
+      isAddPriceModalVisible,
+      isSubmittingPrice,
+      priceForm,
+      priceErrors,
+      showAddPriceModal,
+      closePriceModal,
+      validatePriceForm,
+      submitAddPrice,
       isAddDataModalVisible,
       isSubmittingData,
       isEditMode,
@@ -1032,6 +1218,14 @@ export default {
 
 .add-btn.data-btn:hover {
   background: #2980b9;
+}
+
+.add-btn.price-btn {
+  background: #9b59b6;
+}
+
+.add-btn.price-btn:hover {
+  background: #8e44ad;
 }
 
 .table-section {
@@ -1352,5 +1546,30 @@ export default {
 .submit-btn:disabled {
   background: #95a5a6;
   cursor: not-allowed;
+}
+
+.radio-group {
+  display: flex;
+  gap: 30px;
+  padding: 10px 0;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.radio-label input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.radio-label span {
+  color: #2c3e50;
+  font-size: 14px;
 }
 </style>
