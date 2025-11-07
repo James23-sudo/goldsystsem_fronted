@@ -222,6 +222,17 @@
 
           <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
+              <label>预定时间 <span class="required">*</span></label>
+              <input 
+                v-model="dataForm.scheduledTime" 
+                type="datetime-local" 
+                step="1"
+                placeholder="请选择预定时间"
+                @input="validateDataForm"
+              />
+              <span v-if="dataErrors.scheduledTime" class="error-msg">{{ dataErrors.scheduledTime }}</span>
+            </div>
+            <div class="form-group">
               <label>开仓时间 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.openingTime" 
@@ -231,6 +242,9 @@
               />
               <span v-if="dataErrors.openingTime" class="error-msg">{{ dataErrors.openingTime }}</span>
             </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>平仓时间</label>
               <input 
@@ -239,9 +253,6 @@
                 step="1"
               />
             </div>
-          </div>
-
-          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>交易品种</label>
               <input 
@@ -251,6 +262,9 @@
                 maxlength="64"
               />
             </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>开仓价格</label>
               <input 
@@ -260,9 +274,6 @@
                 placeholder="请输入开仓价格"
               />
             </div>
-          </div>
-
-          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>平仓价格</label>
               <input 
@@ -272,6 +283,9 @@
                 placeholder="请输入平仓价格"
               />
             </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>收盘价</label>
               <input 
@@ -280,6 +294,9 @@
                 step="0.01"
                 placeholder="请输入收盘价"
               />
+            </div>
+            <div class="form-group">
+              <!-- Empty space for layout -->
             </div>
           </div>
 
@@ -861,6 +878,7 @@ export default {
       volume: '',
       entryExit: '',
       overnightProportion: '',
+      scheduledTime: '',
       openingTime: '',
       closingTime: '',
       varieties: 'lbma',
@@ -877,6 +895,7 @@ export default {
       volume: '',
       entryExit: '',
       overnightProportion: '',
+      scheduledTime: '',
       openingTime: ''
     })
 
@@ -897,6 +916,7 @@ export default {
       dataErrors.volume = ''
       dataErrors.entryExit = ''
       dataErrors.overnightProportion = ''
+      dataErrors.scheduledTime = ''
       
       // Reset fields based on direction
       if (isTradeDirection.value) {
@@ -936,6 +956,7 @@ export default {
       dataForm.volume = ''
       dataForm.entryExit = ''
       dataForm.overnightProportion = ''
+      dataForm.scheduledTime = ''
       dataForm.openingTime = ''
       dataForm.closingTime = ''
       dataForm.varieties = 'lbma'
@@ -950,6 +971,7 @@ export default {
       dataErrors.volume = ''
       dataErrors.entryExit = ''
       dataErrors.overnightProportion = ''
+      dataErrors.scheduledTime = ''
       dataErrors.openingTime = ''
     }
 
@@ -967,6 +989,7 @@ export default {
       dataForm.volume = row.volume || ''
       dataForm.entryExit = row.entryExit || ''
       dataForm.overnightProportion = row.overnightProportion || ''
+      dataForm.scheduledTime = toDatetimeLocal(row.scheduledTime)
       dataForm.openingTime = toDatetimeLocal(row.openingTime)
       dataForm.closingTime = toDatetimeLocal(row.closingTime)
       dataForm.varieties = row.varieties || 'lbma'
@@ -1001,7 +1024,7 @@ export default {
 
       // Validate based on direction type
       if (isTradeDirection.value) {
-        // For buy/sell: validate traderSelect, volume and overnightProportion
+        // For buy/sell: validate traderSelect, volume, overnightProportion and scheduledTime
         if (!dataForm.traderSelect) {
           dataErrors.traderSelect = '请选择交易时段'
           isValid = false
@@ -1021,6 +1044,13 @@ export default {
           isValid = false
         } else {
           dataErrors.overnightProportion = ''
+        }
+
+        if (!dataForm.scheduledTime) {
+          dataErrors.scheduledTime = '预定时间不能为空'
+          isValid = false
+        } else {
+          dataErrors.scheduledTime = ''
         }
       } else {
         // For balance: validate entryExit
@@ -1078,6 +1108,7 @@ export default {
           requestData.overPrice = dataForm.overPrice ? parseFloat(dataForm.overPrice) : null
           requestData.entryExit = null
           requestData.overnightProportion = parseFloat(dataForm.overnightProportion)
+          requestData.scheduledTime = dataForm.scheduledTime ? formatDateTime(dataForm.scheduledTime) : null
         } else {
           // For balance direction
           requestData.traderSelect = null
@@ -1091,6 +1122,7 @@ export default {
           requestData.overPrice = null
           requestData.entryExit = parseFloat(dataForm.entryExit)
           requestData.overnightProportion = null
+          requestData.scheduledTime = null
         }
 
         let response
@@ -1284,7 +1316,7 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .form-group select {
@@ -1313,7 +1345,7 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .form-group select {
@@ -1454,7 +1486,7 @@ export default {
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 2px;
 }
 
 .form-group label {
