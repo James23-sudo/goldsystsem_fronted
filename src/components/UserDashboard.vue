@@ -1083,10 +1083,16 @@ export default {
       isSubmittingData.value = true
 
       try {
-        // Format datetime to 'yyyy-MM-dd HH:mm:ss'
+        // Format datetime to 'yyyy-MM-dd HH:mm:ss' - always include full time
         const formatDateTime = (dateTimeLocal) => {
           if (!dateTimeLocal) return null
-          return dateTimeLocal.replace('T', ' ')
+          // Ensure format includes seconds (HH:mm:ss)
+          let formatted = dateTimeLocal.replace('T', ' ')
+          // If seconds are missing, append :00
+          if (formatted.length === 16) {
+            formatted += ':00'
+          }
+          return formatted
         }
 
         const requestData = {
