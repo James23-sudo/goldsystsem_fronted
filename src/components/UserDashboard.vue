@@ -439,6 +439,7 @@ export default {
     const columns = ref([
       { prop: 'id', label: '账号', width: '80px' },
       { prop: 'orderId', label: '订单号', width: '80px' },
+      { prop: 'scheduledTime', label: '预定时间', width: '120px' },
       { prop: 'openingTime', label: '开仓时间', width: '120px' },
       { prop: 'direction', label: '买卖方向', width: '60px' },
       { prop: 'traderSelect', label: '交易时段', width: '60px' },
@@ -500,6 +501,7 @@ export default {
           const records = response.data.data.records || []
           pendingData.value = records.map(record => ({
             ...record,
+            scheduledTime: formatDateTime(record.scheduledTime),
             openingTime: formatDateTime(record.openingTime),
             closingTime: formatDateTime(record.closingTime)
           }))
@@ -534,6 +536,7 @@ export default {
           const records = response.data.data.records || []
           completedData.value = records.map(record => ({
             ...record,
+            scheduledTime: formatDateTime(record.scheduledTime),
             openingTime: formatDateTime(record.openingTime),
             closingTime: formatDateTime(record.closingTime)
           }))

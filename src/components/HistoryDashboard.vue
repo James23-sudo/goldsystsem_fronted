@@ -112,6 +112,7 @@ export default {
     const columns = ref([
       { prop: 'id', label: '账号', width: '80px' },
       { prop: 'orderId', label: '订单号', width: '80px' },
+      { prop: 'scheduledTime', label: '预定时间', width: '120px' },
       { prop: 'openingTime', label: '开仓时间', width: '120px' },
       { prop: 'closingTime', label: '平仓时间', width: '120px' },
       { prop: 'direction', label: '买卖方向', width: '60px' },
@@ -120,9 +121,9 @@ export default {
       { prop: 'openingPrice', label: '开仓价格', width: '60px' },
       { prop: 'closingPrice', label: '平仓价格', width: '60px' },
       { prop: 'overnightPrice', label: '隔夜费', width: '60px' },
-      { prop: 'inoutPrice', label: '盈亏', width: '100px' },
-      { prop: 'overPrice', label: '收盘价', width: '100px' },
-      { prop: 'entryExit', label: '出入金', width: '100px' }
+      { prop: 'inoutPrice', label: '盈亏', width: '60px' },
+      { prop: 'overPrice', label: '收盘价', width: '60px' },
+      { prop: 'entryExit', label: '出入金', width: '80px' }
     ])
 
     // Format datetime helper function
@@ -192,6 +193,7 @@ export default {
           const records = response.data.data.records || []
           userData.value = records.map(record => ({
             ...record,
+            scheduledTime: formatDateTime(record.scheduledTime),
             openingTime: formatDateTime(record.openingTime),
             closingTime: formatDateTime(record.closingTime)
           }))
