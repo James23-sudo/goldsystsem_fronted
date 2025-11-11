@@ -10,7 +10,7 @@
     </div>
 
     <!-- Add Customer Modal -->
-    <div v-if="isAddCustomerModalVisible" class="modal-overlay" @click="closeModal">
+    <div v-if="isAddCustomerModalVisible" class="modal-overlay">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>新增客户</h3>
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Add Price Modal -->
-    <div v-if="isAddPriceModalVisible" class="modal-overlay" @click="closePriceModal">
+    <div v-if="isAddPriceModalVisible" class="modal-overlay">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>新增价格</h3>
@@ -120,7 +120,7 @@
     </div>
 
     <!-- Add Customer Data Modal -->
-    <div v-if="isAddDataModalVisible" class="modal-overlay" @click="closeDataModal">
+    <div v-if="isAddDataModalVisible" class="modal-overlay">
       <div class="modal-content modal-large" @click.stop>
         <div class="modal-header">
           <h3>{{ isEditMode ? '处理客户数据' : '新增客户数据' }}</h3>

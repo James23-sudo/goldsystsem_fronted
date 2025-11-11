@@ -100,13 +100,10 @@ export default {
       { prop: 'id', label: '用户账号', width: '100px' },
       { prop: 'remark', label: '备注', width: '150px' },
       { prop: 'leftMoney', label: '余额', width: '120px' },
-      { prop: 'value', label: '净值', width: '120px' },
       { prop: 'deposit', label: '保证金', width: '120px' },
       { prop: 'canPay', label: '可用预付款', width: '120px' },
       { prop: 'wasPay', label: '已用预付款', width: '120px' },
-      { prop: 'wasIncome', label: '已平仓盈亏', width: '120px' },
-      { prop: 'havingIncome', label: '持仓盈亏', width: '120px' },
-      { prop: 'totalIncome', label: '总盈亏', width: '120px' }
+      { prop: 'wasIncome', label: '已平仓盈亏', width: '120px' }
     ])
 
     const columns = ref([
