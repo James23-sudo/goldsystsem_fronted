@@ -225,15 +225,6 @@
 
           <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
-              <label>开仓交易时段 <span class="required">*</span></label>
-              <select v-model="dataForm.traderSelect" @change="validateDataForm">
-                <option value="">请选择</option>
-                <option value="am">am</option>
-                <option value="pm">pm</option>
-              </select>
-              <span v-if="dataErrors.traderSelect" class="error-msg">{{ dataErrors.traderSelect }}</span>
-            </div>
-            <div class="form-group">
               <label>预定时间 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.scheduledTime" 
@@ -243,6 +234,15 @@
                 @input="validateDataForm"
               />
               <span v-if="dataErrors.scheduledTime" class="error-msg">{{ dataErrors.scheduledTime }}</span>
+            </div>
+            <div class="form-group">
+              <label>开仓交易时段 <span class="required">*</span></label>
+              <select v-model="dataForm.traderSelect" @change="validateDataForm">
+                <option value="">请选择</option>
+                <option value="am">am</option>
+                <option value="pm">pm</option>
+              </select>
+              <span v-if="dataErrors.traderSelect" class="error-msg">{{ dataErrors.traderSelect }}</span>
             </div>
           </div>
 
@@ -269,13 +269,6 @@
 
           <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
-              <label>平仓时间</label>
-              <input 
-                v-model="dataForm.closingTime" 
-                type="date"
-              />
-            </div>
-            <div class="form-group">
               <label>平仓交易时段</label>
               <select v-model="dataForm.traderCloseSelect">
                 <option value="">请选择</option>
@@ -283,18 +276,16 @@
                 <option value="pm">pm</option>
               </select>
             </div>
+            <div class="form-group">
+              <label>平仓时间</label>
+              <input 
+                v-model="dataForm.closingTime" 
+                type="date"
+              />
+            </div>
           </div>
 
           <div class="form-row" v-if="isTradeDirection">
-            <div class="form-group">
-              <label>开仓价格</label>
-              <input 
-                v-model="dataForm.openingPrice" 
-                type="number" 
-                step="0.01"
-                placeholder="请输入开仓价格"
-              />
-            </div>
             <div class="form-group">
               <label>平仓价格</label>
               <input 
@@ -495,6 +486,11 @@ export default {
       return dateTimeStr.replace('T', ' ')
     }
 
+    const newformatDateTime = (dateTimeStr) => {
+      if (!dateTimeStr) return ''
+      return dateTimeStr.replace('T00:00:00', '')
+    }
+
     // Fetch pending data
     const fetchPendingData = async () => {
       try {
@@ -520,8 +516,8 @@ export default {
           pendingData.value = records.map(record => ({
             ...record,
             scheduledTime: formatDateTime(record.scheduledTime),
-            openingTime: formatDateTime(record.openingTime),
-            closingTime: formatDateTime(record.closingTime)
+            openingTime: newformatDateTime(record.openingTime),
+            closingTime: newformatDateTime(record.closingTime)
           }))
           pendingTotal.value = response.data.data.total || 0
         }
@@ -555,8 +551,8 @@ export default {
           completedData.value = records.map(record => ({
             ...record,
             scheduledTime: formatDateTime(record.scheduledTime),
-            openingTime: formatDateTime(record.openingTime),
-            closingTime: formatDateTime(record.closingTime)
+            openingTime: newformatDateTime(record.openingTime),
+            closingTime: newformatDateTime(record.closingTime)
           }))
           completedTotal.value = response.data.data.total || 0
         }
