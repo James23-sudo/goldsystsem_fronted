@@ -1,7 +1,10 @@
 <template>
   <div>
     <div class="content-header">
-      <h2>用户数据看板</h2>
+      <div class="header-left">
+        <h2>用户数据看板</h2>
+        <span class="beijing-time">北京时间：{{ beijingTime }}</span>
+      </div>
       <div class="button-group">
         <button class="add-btn" @click="showAddCustomerModal">+ 新增客户</button>
         <button class="add-btn data-btn" @click="showAddDataModal">+ 新增客户数据</button>
@@ -170,13 +173,13 @@
               <span v-if="dataErrors.direction" class="error-msg">{{ dataErrors.direction }}</span>
             </div>
             <div class="form-group" v-if="isTradeDirection">
-              <label>交易时段 <span class="required">*</span></label>
-              <select v-model="dataForm.traderSelect" @change="validateDataForm">
-                <option value="">请选择</option>
-                <option value="am">am</option>
-                <option value="pm">pm</option>
-              </select>
-              <span v-if="dataErrors.traderSelect" class="error-msg">{{ dataErrors.traderSelect }}</span>
+              <label>交易品种</label>
+              <input 
+                v-model="dataForm.varieties" 
+                type="text" 
+                placeholder="默认: lbma"
+                maxlength="64"
+              />
             </div>
             <div class="form-group" v-else-if="isBalance">
               <label>出入金 <span class="required">*</span></label>
@@ -208,7 +211,7 @@
               <span v-if="dataErrors.volume" class="error-msg">{{ dataErrors.volume }}</span>
             </div>
             <div class="form-group">
-              <label>隔夜费比例(%) <span class="required">*</span></label>
+              <label>隔夜费比例 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.overnightProportion" 
                 type="number" 
@@ -222,6 +225,15 @@
 
           <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
+              <label>开仓交易时段 <span class="required">*</span></label>
+              <select v-model="dataForm.traderSelect" @change="validateDataForm">
+                <option value="">请选择</option>
+                <option value="am">am</option>
+                <option value="pm">pm</option>
+              </select>
+              <span v-if="dataErrors.traderSelect" class="error-msg">{{ dataErrors.traderSelect }}</span>
+            </div>
+            <div class="form-group">
               <label>预定时间 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.scheduledTime" 
@@ -232,15 +244,26 @@
               />
               <span v-if="dataErrors.scheduledTime" class="error-msg">{{ dataErrors.scheduledTime }}</span>
             </div>
+          </div>
+
+          <div class="form-row" v-if="isTradeDirection">
             <div class="form-group">
               <label>开仓时间 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.openingTime" 
-                type="datetime-local" 
-                step="1"
+                type="date"
                 @input="validateDataForm"
               />
               <span v-if="dataErrors.openingTime" class="error-msg">{{ dataErrors.openingTime }}</span>
+            </div>
+            <div class="form-group">
+              <label>开仓价格</label>
+              <input 
+                v-model="dataForm.openingPrice" 
+                type="number" 
+                step="0.01"
+                placeholder="请输入开仓价格"
+              />
             </div>
           </div>
 
@@ -249,18 +272,16 @@
               <label>平仓时间</label>
               <input 
                 v-model="dataForm.closingTime" 
-                type="datetime-local" 
-                step="1"
+                type="date"
               />
             </div>
             <div class="form-group">
-              <label>交易品种</label>
-              <input 
-                v-model="dataForm.varieties" 
-                type="text" 
-                placeholder="默认: lbma"
-                maxlength="64"
-              />
+              <label>平仓交易时段</label>
+              <select v-model="dataForm.traderCloseSelect">
+                <option value="">请选择</option>
+                <option value="am">am</option>
+                <option value="pm">pm</option>
+              </select>
             </div>
           </div>
 
@@ -285,29 +306,13 @@
             </div>
           </div>
 
-          <div class="form-row" v-if="isTradeDirection">
-            <div class="form-group">
-              <label>收盘价</label>
-              <input 
-                v-model="dataForm.overPrice" 
-                type="number" 
-                step="0.01"
-                placeholder="请输入收盘价"
-              />
-            </div>
-            <div class="form-group">
-              <!-- Empty space for layout -->
-            </div>
-          </div>
-
           <!-- Fields for balance direction -->
           <div class="form-row" v-if="isBalance">
             <div class="form-group">
               <label>开仓时间 <span class="required">*</span></label>
               <input 
                 v-model="dataForm.openingTime" 
-                type="datetime-local" 
-                step="1"
+                type="date"
                 @input="validateDataForm"
               />
               <span v-if="dataErrors.openingTime" class="error-msg">{{ dataErrors.openingTime }}</span>
@@ -436,13 +441,27 @@ export default {
     DataTable
   },
   setup() {
+    // Beijing time display
+    const beijingTime = ref('')
+    
+    const updateBeijingTime = () => {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const seconds = String(now.getSeconds()).padStart(2, '0')
+      beijingTime.value = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    }
+    
     const columns = ref([
       { prop: 'id', label: '账号', width: '80px' },
       { prop: 'orderId', label: '订单号', width: '80px' },
       { prop: 'scheduledTime', label: '预定时间', width: '120px' },
       { prop: 'openingTime', label: '开仓时间', width: '120px' },
       { prop: 'direction', label: '买卖方向', width: '60px' },
-      { prop: 'traderSelect', label: '交易时段', width: '60px' },
+      { prop: 'traderSelect', label: '开仓交易时段', width: '60px' },
       { prop: 'volume', label: '成交量(盎司)', width: '60px' },
       { prop: 'varieties', label: '交易品种', width: '60px' },
       { prop: 'openingPrice', label: '开仓价格', width: '60px' },
@@ -450,7 +469,6 @@ export default {
       { prop: 'closingPrice', label: '平仓价格', width: '60px' },
       { prop: 'overnightPrice', label: '隔夜费', width: '60px' },
       { prop: 'inoutPrice', label: '盈亏', width: '100px' },
-      { prop: 'overPrice', label: '收盘价', width: '100px' },
       { prop: 'entryExit', label: '出入金', width: '100px' },
       { prop: 'actions', label: '操作', width: '120px', fixed: true }
     ])
@@ -643,6 +661,10 @@ export default {
       fetchUserList()
       fetchPendingData()
       fetchCompletedData()
+      
+      // Initialize Beijing time and update every second
+      updateBeijingTime()
+      setInterval(updateBeijingTime, 1000)
     })
 
     const isAddCustomerModalVisible = ref(false)
@@ -668,6 +690,15 @@ export default {
       fetchUserList()
       if (!isEditMode.value) {
         resetDataForm()
+        // Auto-fill scheduled time with current Beijing time for new data
+        const now = new Date()
+        const year = now.getFullYear()
+        const month = String(now.getMonth() + 1).padStart(2, '0')
+        const day = String(now.getDate()).padStart(2, '0')
+        const hours = String(now.getHours()).padStart(2, '0')
+        const minutes = String(now.getMinutes()).padStart(2, '0')
+        const seconds = String(now.getSeconds()).padStart(2, '0')
+        dataForm.scheduledTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
       }
     }
 
@@ -878,6 +909,7 @@ export default {
       orderId: '',
       direction: '',
       traderSelect: '',
+      traderCloseSelect: '',
       volume: '',
       entryExit: '',
       overnightProportion: '',
@@ -886,8 +918,7 @@ export default {
       closingTime: '',
       varieties: 'lbma',
       openingPrice: '',
-      closingPrice: '',
-      overPrice: ''
+      closingPrice: ''
     })
 
     const dataErrors = reactive({
@@ -928,13 +959,13 @@ export default {
       } else {
         // For balance, clear trade-specific fields
         dataForm.traderSelect = ''
+        dataForm.traderCloseSelect = ''
         dataForm.volume = ''
         dataForm.overnightProportion = ''
         dataForm.closingTime = ''
         dataForm.varieties = 'lbma'
         dataForm.openingPrice = ''
         dataForm.closingPrice = ''
-        dataForm.overPrice = ''
       }
       
       validateDataForm()
@@ -956,6 +987,7 @@ export default {
       dataForm.orderId = ''
       dataForm.direction = ''
       dataForm.traderSelect = ''
+      dataForm.traderCloseSelect = ''
       dataForm.volume = ''
       dataForm.entryExit = ''
       dataForm.overnightProportion = ''
@@ -965,7 +997,6 @@ export default {
       dataForm.varieties = 'lbma'
       dataForm.openingPrice = ''
       dataForm.closingPrice = ''
-      dataForm.overPrice = ''
       
       dataErrors.userId = ''
       dataErrors.orderId = ''
@@ -984,21 +1015,27 @@ export default {
         if (!dateTimeStr) return ''
         return dateTimeStr.replace(' ', 'T')
       }
+      
+      // Helper to extract date from 'yyyy-MM-dd HH:mm:ss' or 'yyyy-MM-dd'
+      const toDate = (dateTimeStr) => {
+        if (!dateTimeStr) return ''
+        return dateTimeStr.split(' ')[0]
+      }
 
       dataForm.userId = row.id || ''
       dataForm.orderId = row.orderId || ''
       dataForm.direction = row.direction || ''
       dataForm.traderSelect = row.traderSelect || ''
+      dataForm.traderCloseSelect = row.traderCloseSelect || ''
       dataForm.volume = row.volume || ''
       dataForm.entryExit = row.entryExit || ''
       dataForm.overnightProportion = row.overnightProportion || ''
       dataForm.scheduledTime = toDatetimeLocal(row.scheduledTime)
-      dataForm.openingTime = toDatetimeLocal(row.openingTime)
-      dataForm.closingTime = toDatetimeLocal(row.closingTime)
+      dataForm.openingTime = toDate(row.openingTime)
+      dataForm.closingTime = toDate(row.closingTime)
       dataForm.varieties = row.varieties || 'lbma'
       dataForm.openingPrice = row.openingPrice || ''
       dataForm.closingPrice = row.closingPrice || ''
-      dataForm.overPrice = row.overPrice || ''
     }
 
     const validateDataForm = () => {
@@ -1042,8 +1079,8 @@ export default {
           dataErrors.volume = ''
         }
 
-        if (!dataForm.overnightProportion || parseFloat(dataForm.overnightProportion) < 0) {
-          dataErrors.overnightProportion = '隔夜费比例不能为空且不能为负'
+        if (!dataForm.overnightProportion && dataForm.overnightProportion !== 0) {
+          dataErrors.overnightProportion = '隔夜费比例不能为空'
           isValid = false
         } else {
           dataErrors.overnightProportion = ''
@@ -1094,11 +1131,17 @@ export default {
           }
           return formatted
         }
+        
+        // Format date to 'yyyy-MM-dd 00:00:00'
+        const formatDate = (dateStr) => {
+          if (!dateStr) return null
+          return `${dateStr} 00:00:00`
+        }
 
         const requestData = {
           id: dataForm.userId,
           orderId: dataForm.orderId,
-          openingTime: formatDateTime(dataForm.openingTime),
+          openingTime: formatDate(dataForm.openingTime),
           direction: dataForm.direction,
           status: '1'
         }
@@ -1107,20 +1150,22 @@ export default {
         if (isTradeDirection.value) {
           // For buy/sell direction
           requestData.traderSelect = dataForm.traderSelect
-          requestData.closingTime = dataForm.closingTime ? formatDateTime(dataForm.closingTime) : null
+          requestData.traderCloseSelect = dataForm.traderCloseSelect || null
+          requestData.closingTime = dataForm.closingTime ? formatDate(dataForm.closingTime) : null
           requestData.volume = parseFloat(dataForm.volume)
           requestData.varieties = dataForm.varieties || 'lbma'
           requestData.openingPrice = dataForm.openingPrice ? parseFloat(dataForm.openingPrice) : null
           requestData.closingPrice = dataForm.closingPrice ? parseFloat(dataForm.closingPrice) : null
           requestData.overnightPrice = null
           requestData.inoutPrice = null
-          requestData.overPrice = dataForm.overPrice ? parseFloat(dataForm.overPrice) : null
+          requestData.overPrice = null
           requestData.entryExit = null
           requestData.overnightProportion = parseFloat(dataForm.overnightProportion)
           requestData.scheduledTime = dataForm.scheduledTime ? formatDateTime(dataForm.scheduledTime) : null
         } else {
           // For balance direction
           requestData.traderSelect = null
+          requestData.traderCloseSelect = null
           requestData.closingTime = null
           requestData.volume = null
           requestData.varieties = null
@@ -1161,6 +1206,7 @@ export default {
     }
 
     return {
+      beijingTime,
       columns,
       pendingData,
       pendingPage,
@@ -1228,9 +1274,21 @@ export default {
   margin-bottom: 30px;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .content-header h2 {
   margin: 0;
   color: #2c3e50;
+}
+
+.beijing-time {
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .button-group {
