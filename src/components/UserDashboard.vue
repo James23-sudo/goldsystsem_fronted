@@ -881,6 +881,8 @@ export default {
         if (response.data.code === 200 || response.data.success) {
           alert('价格添加成功！')
           closePriceModal()
+          // Refresh pending data after adding price
+          fetchPendingData()
         } else {
           alert('添加失败：' + (response.data.msg || '未知错误'))
         }
