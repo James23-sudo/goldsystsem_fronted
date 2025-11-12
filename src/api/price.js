@@ -12,3 +12,14 @@ import axios from 'axios'
 export const savePriceData = (data) => {
   return axios.post('/api/price/save', data)
 }
+
+/**
+ * Query price data
+ * @param {Object} params - Query parameters
+ * @param {string} params.priceDate - Price date in format yyyy-MM-dd (optional)
+ * @param {string} params.isSelectAm - Selection identifier ("1"=am, "0"=pm) (optional)
+ * @returns {Promise} API response
+ */
+export const queryPrice = (params) => {
+  return axios.get('/api/price/list', { params })
+}

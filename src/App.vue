@@ -28,6 +28,7 @@
       <main class="content">
         <UserDashboard v-if="activeMenu === 'dashboard'" />
         <HistoryDashboard v-if="activeMenu === 'history'" />
+        <PriceDashboard v-if="activeMenu === 'price'" />
       </main>
     </div>
   </div>
@@ -37,19 +38,22 @@
 import { ref } from 'vue'
 import UserDashboard from './components/UserDashboard.vue'
 import HistoryDashboard from './components/HistoryDashboard.vue'
+import PriceDashboard from './components/PriceDashboard.vue'
 
 export default {
   name: 'App',
   components: {
     UserDashboard,
-    HistoryDashboard
+    HistoryDashboard,
+    PriceDashboard
   },
   setup() {
     const activeMenu = ref('dashboard')
     
     const menuItems = [
       { id: 'dashboard', icon: '📊', text: '用户数据看板' },
-      { id: 'history', icon: '📈', text: '历史数据看板' }
+      { id: 'history', icon: '📈', text: '历史数据看板' },
+      { id: 'price', icon: '💰', text: '查看价格' }
     ]
 
     return {
