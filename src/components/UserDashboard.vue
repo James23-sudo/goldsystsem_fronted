@@ -422,7 +422,7 @@
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { addUser, getAllUser } from '@/api/user'
-import { getTraderList, addTraderData, updateTraderData } from '@/api/trader'
+import { getTraderList, addTraderData, updateTraderData, updateNewTraderData, deleteTrader } from '@/api/trader'
 import { savePriceData } from '@/api/price'
 import DataTable from './DataTable.vue'
 
@@ -613,6 +613,7 @@ export default {
     const handleEdit = (row) => {
       console.log('编辑:', row)
       isEditMode.value = true
+      isProcessMode.value = false // Edit mode
       editingRowId.value = row.id
       editingOrderId.value = row.orderId
       showAddDataModal()
@@ -622,6 +623,7 @@ export default {
     const handleProcess = (row) => {
       console.log('处理:', row)
       isEditMode.value = true
+      isProcessMode.value = true // Process mode
       editingRowId.value = row.id
       editingOrderId.value = row.orderId
       showAddDataModal()
@@ -634,11 +636,7 @@ export default {
       }
 
       try {
-        const response = await updateTraderData({
-          id: row.id,
-          orderId: row.orderId,
-          status: '0'
-        })
+        const response = await deleteTrader(row.orderId)
 
         if (response.data.code === 200 || response.data.success) {
           alert('删除成功！')
@@ -706,6 +704,7 @@ export default {
     const closeDataModal = () => {
       isAddDataModalVisible.value = false
       isEditMode.value = false
+      isProcessMode.value = false
       editingRowId.value = null
       editingOrderId.value = null
       resetDataForm()
@@ -896,6 +895,7 @@ export default {
     const isAddDataModalVisible = ref(false)
     const isSubmittingData = ref(false)
     const isEditMode = ref(false)
+    const isProcessMode = ref(false) // Flag to distinguish between edit and process
     const editingRowId = ref(null)
     const editingOrderId = ref(null)
     const userList = ref([])
@@ -1177,25 +1177,36 @@ export default {
 
         let response
         if (isEditMode.value) {
-          // Update mode
-          response = await updateTraderData(requestData)
+          // Edit or Process mode
+          if (isProcessMode.value) {
+            // Process mode - use updateTraderData
+            response = await updateTraderData(requestData)
+          } else {
+            // Edit mode - use updateNewTraderData
+            response = await updateNewTraderData(requestData)
+          }
         } else {
           // Add mode
           response = await addTraderData(requestData)
         }
 
         if (response.data.code === 200 || response.data.success) {
-          alert(isEditMode.value ? '处理成功！' : '客户数据添加成功！')
+          const successMsg = isEditMode.value 
+            ? (isProcessMode.value ? '处理成功！' : '编辑成功！') 
+            : '客户数据添加成功！'
+          alert(successMsg)
           closeDataModal()
           // Refresh both pending and completed data lists
           fetchPendingData()
           fetchCompletedData()
         } else {
-          alert((isEditMode.value ? '处理' : '添加') + '失败：' + (response.data.msg || '未知错误'))
+          const action = isEditMode.value ? (isProcessMode.value ? '处理' : '编辑') : '添加'
+          alert(action + '失败：' + (response.data.msg || '未知错误'))
         }
       } catch (error) {
-        console.error((isEditMode.value ? '处理' : '添加') + '客户数据失败:', error)
-        alert((isEditMode.value ? '处理' : '添加') + '失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
+        const action = isEditMode.value ? (isProcessMode.value ? '处理' : '编辑') : '添加'
+        console.error(action + '客户数据失败:', error)
+        alert(action + '失败：' + (error.response?.data?.msg || error.msg || '网络错误'))
       } finally {
         isSubmittingData.value = false
       }

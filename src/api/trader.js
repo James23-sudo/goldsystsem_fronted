@@ -36,3 +36,21 @@ export const addTraderData = (data) => {
 export const updateTraderData = (data) => {
   return axios.post('/api/trader/updateTrader', data)
 }
+
+/**
+ * Update trader data
+ * @param {Object} data - Trader data
+ * @returns {Promise} API response
+ */
+export const updateNewTraderData = (data) => {
+  return axios.post('/api/trader/updateNewTrader', data)
+}
+
+/**
+ * Delete trader data
+ * @param {string} orderId - Order ID
+ * @returns {Promise} API response
+ */
+export const deleteTrader = (orderId) => {
+  return axios.delete(`/api/trader/deleteTrader/${orderId}`)
+}
