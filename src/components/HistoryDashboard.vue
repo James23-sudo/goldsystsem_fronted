@@ -29,6 +29,9 @@
             <button class="query-btn" @click="queryUserData" :disabled="!selectedUserId">
               查询
             </button>
+            <button class="export-btn" @click="exportUserHistory" :disabled="!selectedUserId || userData.length === 0">
+              导出
+            </button>
           </div>
         </div>
 
@@ -74,6 +77,7 @@
 
 <script>
 import { ref, onMounted } from 'vue'
+import * as XLSX from 'xlsx' // 导入 xlsx 库
 import { getAllUser, getUserByPage } from '@/api/user'
 import { getTraderList } from '@/api/trader'
 import DataTable from './DataTable.vue'
@@ -165,6 +169,66 @@ export default {
       total.value = 0
     }
 
+    // 导出用户历史数据为 Excel
+    const exportUserHistory = async () => {
+      if (!selectedUserId.value) return
+
+      try {
+        let allData = []
+        let currentPage = 1
+        const pageSize = 500 // 每次请求获取更多数据以减少请求次数
+        let totalPages = 1
+
+        // 分页获取所有数据
+        do {
+          const response = await getTraderList({
+            userId: selectedUserId.value,
+            page: currentPage,
+            pageSize: pageSize,
+            isOk: '1'
+          })
+
+          if (response.data.code === 200) {
+            const records = response.data.data.records || []
+            allData.push(...records)
+            totalPages = Math.ceil(response.data.data.total / pageSize)
+            currentPage++
+          } else {
+            throw new Error('获取部分数据失败')
+          }
+        } while (currentPage <= totalPages)
+
+        // 格式化数据
+        const formattedData = allData.map(record => ({
+          '账号': record.id,
+          '订单号': record.orderId,
+          '预定时间': formatDateTime(record.scheduledTime),
+          '开仓时间': formatDateTime(record.openingTime),
+          '平仓时间': formatDateTime(record.closingTime),
+          '买卖方向': record.direction,
+          '成交量(盎司)': record.volume,
+          '交易品种': record.varieties,
+          '开仓价格': record.openingPrice,
+          '平仓价格': record.closingPrice,
+          '隔夜费': record.overnightPrice,
+          '盈亏': record.inoutPrice,
+          '收盘价': record.overPrice,
+          '出入金': record.entryExit
+        }))
+
+        // 创建工作簿和工作表
+        const worksheet = XLSX.utils.json_to_sheet(formattedData)
+        const workbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(workbook, worksheet, '用户历史数据')
+
+        // 生成并下载 Excel 文件
+        XLSX.writeFile(workbook, `用户_${selectedUserId.value}_历史数据.xlsx`)
+      } catch (error) {
+        console.error('导出用户历史数据失败:', error)
+        // 在这里可以添加用户提示，例如使用 alert 或其他 UI 组件
+      }
+    }
+
     // Query user data
     const queryUserData = async () => {
       if (!selectedUserId.value) return
@@ -251,7 +315,8 @@ export default {
       handlePageChange,
       handlePageSizeChange,
       handleUserPageChange,
-      handleUserPageSizeChange
+      handleUserPageSizeChange,
+      exportUserHistory // 导出函数
     }
   }
 }
@@ -342,6 +407,26 @@ export default {
 }
 
 .query-btn:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.export-btn {
+  padding: 8px 20px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #229954;
+}
+
+.export-btn:disabled {
   background: #95a5a6;
   cursor: not-allowed;
 }
