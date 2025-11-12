@@ -325,6 +325,12 @@
       <div class="table-header">
         <h3 class="section-title">待处理数据</h3>
         <div class="filter-controls">
+          <label>操作：</label>
+          <select v-model="pendingSelectedIsOpen" @change="handlePendingIsOpenChange" class="user-filter-select">
+            <option value="">全部</option>
+            <option value="0">待处理</option>
+            <option value="1">待审批</option>
+          </select>
           <label>交易时段：</label>
           <select v-model="pendingSelectedTraderSelect" @change="handlePendingTraderSelectChange" class="user-filter-select">
             <option value="">全部</option>
@@ -363,7 +369,8 @@
           </span>
         </template>
         <template #column-actions="{ row }">
-          <button class="action-btn process" @click="handleProcess(row)">处理</button>
+          <button v-if="row.isOpen == 0" class="action-btn process" @click="handleProcess(row)">处理</button>
+          <button v-else class="action-btn approve" @click="handleProcess(row)">审批</button>
         </template>
       </DataTable>
     </div>
@@ -456,6 +463,7 @@ export default {
       { prop: 'volume', label: '成交量(盎司)', width: '60px' },
       { prop: 'varieties', label: '交易品种', width: '60px' },
       { prop: 'openingPrice', label: '开仓价格', width: '60px' },
+      { prop: 'traderCloseSelect', label: '平仓交易时段', width: '60px' },
       { prop: 'closingTime', label: '平仓时间', width: '120px' },
       { prop: 'closingPrice', label: '平仓价格', width: '60px' },
       { prop: 'overnightPrice', label: '隔夜费', width: '60px' },
@@ -471,6 +479,7 @@ export default {
     const pendingTotal = ref(0)
     const pendingSelectedUserId = ref('')
     const pendingSelectedTraderSelect = ref('')
+    const pendingSelectedIsOpen = ref('')
 
     // Completed data list
     const completedData = ref([])
@@ -508,6 +517,11 @@ export default {
         // Add traderSelect filter if selected
         if (pendingSelectedTraderSelect.value) {
           params.traderSelect = pendingSelectedTraderSelect.value
+        }
+        
+        // Add isOpen filter if selected
+        if (pendingSelectedIsOpen.value !== '') {
+          params.isOpen = pendingSelectedIsOpen.value
         }
         
         const response = await getTraderList(params)
@@ -599,6 +613,12 @@ export default {
 
     // Handle trader select filter change for pending data
     const handlePendingTraderSelectChange = () => {
+      pendingPage.value = 1
+      fetchPendingData()
+    }
+
+    // Handle isOpen filter change for pending data
+    const handlePendingIsOpenChange = () => {
       pendingPage.value = 1
       fetchPendingData()
     }
@@ -1223,6 +1243,7 @@ export default {
       pendingTotal,
       pendingSelectedUserId,
       pendingSelectedTraderSelect,
+      pendingSelectedIsOpen,
       completedData,
       completedPage,
       completedPageSize,
@@ -1233,6 +1254,7 @@ export default {
       handlePendingPageSizeChange,
       handlePendingUserChange,
       handlePendingTraderSelectChange,
+      handlePendingIsOpenChange,
       handleCompletedPageChange,
       handleCompletedPageSizeChange,
       handleCompletedUserChange,
@@ -1489,6 +1511,11 @@ export default {
 
 .action-btn.delete {
   background: #e74c3c;
+  color: white;
+}
+
+.action-btn.approve {
+  background: #f39c12;
   color: white;
 }
 
