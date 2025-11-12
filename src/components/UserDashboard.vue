@@ -326,7 +326,7 @@
         <h3 class="section-title">待处理数据</h3>
         <div class="filter-controls">
           <label>操作：</label>
-          <select v-model="pendingSelectedIsOpen" @change="handlePendingIsOpenChange" class="user-filter-select">
+          <select v-model="pendingSelectedIsAgg" @change="handlePendingIsAggChange" class="user-filter-select">
             <option value="">全部</option>
             <option value="0">待处理</option>
             <option value="1">待审批</option>
@@ -369,7 +369,7 @@
           </span>
         </template>
         <template #column-actions="{ row }">
-          <button v-if="row.isOpen == 0" class="action-btn process" @click="handleProcess(row)">处理</button>
+          <button v-if="row.isOpen == 0 || row.openingPrice == null || row.closingPrice == null" class="action-btn process" @click="handleProcess(row)">处理</button>
           <button v-else class="action-btn approve" @click="handleProcess(row)">审批</button>
         </template>
       </DataTable>
@@ -479,7 +479,7 @@ export default {
     const pendingTotal = ref(0)
     const pendingSelectedUserId = ref('')
     const pendingSelectedTraderSelect = ref('')
-    const pendingSelectedIsOpen = ref('')
+    const pendingSelectedIsAgg = ref('')
 
     // Completed data list
     const completedData = ref([])
@@ -519,9 +519,9 @@ export default {
           params.traderSelect = pendingSelectedTraderSelect.value
         }
         
-        // Add isOpen filter if selected
-        if (pendingSelectedIsOpen.value !== '') {
-          params.isOpen = pendingSelectedIsOpen.value
+        // Add isAgg filter if selected
+        if (pendingSelectedIsAgg.value !== '') {
+          params.isAgg = pendingSelectedIsAgg.value
         }
         
         const response = await getTraderList(params)
@@ -617,8 +617,8 @@ export default {
       fetchPendingData()
     }
 
-    // Handle isOpen filter change for pending data
-    const handlePendingIsOpenChange = () => {
+    // Handle isAgg filter change for pending data
+    const handlePendingIsAggChange = () => {
       pendingPage.value = 1
       fetchPendingData()
     }
@@ -1243,7 +1243,7 @@ export default {
       pendingTotal,
       pendingSelectedUserId,
       pendingSelectedTraderSelect,
-      pendingSelectedIsOpen,
+      pendingSelectedIsAgg,
       completedData,
       completedPage,
       completedPageSize,
@@ -1254,7 +1254,7 @@ export default {
       handlePendingPageSizeChange,
       handlePendingUserChange,
       handlePendingTraderSelectChange,
-      handlePendingIsOpenChange,
+      handlePendingIsAggChange,
       handleCompletedPageChange,
       handleCompletedPageSizeChange,
       handleCompletedUserChange,
