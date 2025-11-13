@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="header">
       <div class="logo">
-        <h1>BillionGold</h1>
+        <h1>BillionGold <span class="currency">统一交易单位:USD</span></h1>
       </div>
     </header>
 
@@ -84,6 +84,12 @@ export default {
   margin: 0;
   font-size: 24px;
   color: #2c3e50;
+}
+
+.currency {
+  color: #e74c3c;
+  font-size: 18px;
+  margin-left: 10px;
 }
 
 .user-info {
